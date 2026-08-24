@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  ActiveSelection,
   Circle,
   FabricImage,
   Gradient,
@@ -72,6 +73,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false)
   const [siteBackground, setSiteBackground] = useState(DEFAULT_SITE_BACKGROUND)
   const fileInputRef = useRef(null)
+  const clipboardRef = useRef([])
   const historyRef = useRef({ history: [], index: -1, isRestoring: false })
 
   useEffect(() => {
@@ -125,6 +127,53 @@ function App() {
     if (historyIndex < history.length - 1) restoreSnapshot(historyIndex + 1)
   }, [historyIndex, history.length, restoreSnapshot])
 
+  const copySelection = useCallback(async () => {
+    if (!canvas) return
+
+    const selected = canvas.getActiveObjects()
+    if (!selected.length) return
+
+    clipboardRef.current = await Promise.all(
+      selected.map((object) => object.clone(FABRIC_CUSTOM_PROPS)),
+    )
+  }, [canvas])
+
+  const pasteSelection = useCallback(async () => {
+    if (!canvas || !clipboardRef.current.length) return
+
+    canvas.discardActiveObject()
+
+    const pastedObjects = await Promise.all(
+      clipboardRef.current.map(async (object) => {
+        const clone = await object.clone(FABRIC_CUSTOM_PROPS)
+        clone.set({
+          left: (clone.left || 0) + 24,
+          top: (clone.top || 0) + 24,
+        })
+        clone.setCoords()
+        canvas.add(clone)
+        return clone
+      }),
+    )
+
+    if (pastedObjects.length === 1) {
+      canvas.setActiveObject(pastedObjects[0])
+    } else {
+      canvas.setActiveObject(new ActiveSelection(pastedObjects, { canvas }))
+    }
+
+    clipboardRef.current = await Promise.all(
+      pastedObjects.map((object) => object.clone(FABRIC_CUSTOM_PROPS)),
+    )
+    canvas.requestRenderAll()
+    pushHistory(canvas)
+  }, [canvas, pushHistory])
+
+  const duplicateSelection = useCallback(async () => {
+    await copySelection()
+    await pasteSelection()
+  }, [copySelection, pasteSelection])
+
   useEffect(() => {
     if (!canvas) return
 
@@ -174,6 +223,21 @@ function App() {
         redo()
       }
 
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+        event.preventDefault()
+        copySelection()
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        pasteSelection()
+      }
+
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault()
+        duplicateSelection()
+      }
+
       if ((event.key === 'Delete' || event.key === 'Backspace') && canvas) {
         if (canvas.getActiveObject()?.isEditing) return
 
@@ -189,7 +253,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeys)
     return () => window.removeEventListener('keydown', handleKeys)
-  }, [canvas, redo, undo])
+  }, [canvas, copySelection, duplicateSelection, pasteSelection, redo, undo])
 
   const centerObject = (object) => {
     if (!canvas) return object
