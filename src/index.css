@@ -132,6 +132,7 @@
 body {
   margin: 0;
   min-width: 320px;
+  overflow: hidden;
 }
 
 button,
@@ -219,7 +220,8 @@ h2 {
 .app-shell {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .topbar {
@@ -232,6 +234,7 @@ h2 {
   min-height: 68px;
   padding: 10px 18px;
   position: sticky;
+  flex-shrink: 0;
   top: 0;
   z-index: 5;
 }
@@ -270,7 +273,9 @@ h2 {
   display: grid;
   flex: 1;
   grid-template-columns: 280px minmax(520px, 1fr) 300px;
+  height: calc(100vh - 68px);
   min-height: 0;
+  overflow: hidden;
 }
 
 .sidebar {
@@ -439,7 +444,7 @@ label {
 }
 
 .shape-preview {
-  background: #facc15;
+  background: #ffffff;
   display: block;
   height: 38px;
   width: 38px;
@@ -451,8 +456,25 @@ label {
   border-radius: 8px;
 }
 
+.shape-rectangle {
+  height: 24px;
+  margin-top: 7px;
+}
+
+.shape-half-rectangle {
+  clip-path: polygon(0 0, 100% 0, 52% 100%, 0 100%);
+  height: 30px;
+  margin-top: 4px;
+}
+
 .shape-circle {
   border-radius: 50%;
+}
+
+.shape-half-circle {
+  border-radius: 38px 38px 0 0;
+  height: 20px;
+  margin-top: 9px;
 }
 
 .shape-triangle {
@@ -575,7 +597,7 @@ label {
 .shape-arrow,
 .shape-thin-arrow {
   background: transparent;
-  border-top: 4px solid #facc15;
+  border-top: 4px solid #ffffff;
   height: 1px;
   margin-top: 19px;
 }
@@ -596,7 +618,7 @@ label {
 .shape-arrow::after,
 .shape-thin-arrow::after {
   border-bottom: 6px solid transparent;
-  border-left: 9px solid #facc15;
+  border-left: 9px solid #ffffff;
   border-top: 6px solid transparent;
   content: "";
   position: absolute;
@@ -629,7 +651,7 @@ label {
 }
 
 .shape-gradient-block {
-  background: linear-gradient(90deg, #facc15, transparent);
+  background: linear-gradient(90deg, #ffffff, transparent);
 }
 
 .swatches {
@@ -668,7 +690,9 @@ label {
 .workspace-panel {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
   min-width: 0;
+  overflow: hidden;
 }
 
 .workspace-header {
@@ -701,6 +725,7 @@ label {
   background-size: 28px 28px;
   display: flex;
   justify-content: center;
+  min-height: 0;
   overflow: auto;
   padding: 42px;
 }
@@ -724,6 +749,29 @@ label {
 }
 
 .segmented button {
+  min-height: 36px;
+  padding: 0;
+}
+
+.property-group {
+  display: grid;
+  gap: 8px;
+}
+
+.property-group h3 {
+  color: #bfd0e9;
+  font-size: 12px;
+  margin: 0;
+}
+
+.layer-controls {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.layer-controls button {
+  aspect-ratio: 1;
   min-height: 36px;
   padding: 0;
 }

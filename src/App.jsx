@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Circle, FabricImage, IText, Line, Path, Polygon, Rect, Triangle } from 'fabric'
+import {
+  Circle,
+  FabricImage,
+  Line,
+  Path,
+  Polygon,
+  Rect,
+  Textbox,
+  Triangle,
+} from 'fabric'
 import { Image, Square, Type } from 'lucide-react'
 import EditorCanvas from './components/EditorCanvas'
 import ExportPanel from './components/ExportPanel'
@@ -12,6 +21,7 @@ import { DEFAULT_FONT } from './utils/fonts'
 import './index.css'
 
 const STORAGE_KEY = 'jeepney-sign-maker-design'
+const FABRIC_CUSTOM_PROPS = ['curveAmount', 'warpType', 'warpAmount']
 
 const initialSize = {
   type: 'fixed',
@@ -60,7 +70,7 @@ function App() {
     (nextCanvas = canvas) => {
       if (!nextCanvas || historyRef.current.isRestoring) return
 
-      const snapshot = JSON.stringify(nextCanvas.toJSON(['curveAmount']))
+      const snapshot = JSON.stringify(nextCanvas.toJSON(FABRIC_CUSTOM_PROPS))
       const current = historyRef.current.history[historyRef.current.index]
 
       if (snapshot === current) return
@@ -180,9 +190,10 @@ function App() {
 
   const addText = (text = 'NAIC -> PITX') => {
     centerObject(
-      new IText(text, {
+      new Textbox(text, {
         left: 120,
         top: 90,
+        width: 560,
         fontFamily: DEFAULT_FONT,
         fontSize: 54,
         fontWeight: '700',
@@ -200,14 +211,32 @@ function App() {
     if (!canvas) return
 
     const common = {
-      fill: '#facc15',
+      fill: '#ffffff',
       stroke: '#ffffff',
       strokeWidth: 3,
       opacity: 1,
     }
 
-    if (shape === 'rectangle' || shape === 'square' || shape === 'process') {
+    if (shape === 'square' || shape === 'process') {
       centerObject(new Rect({ width: 120, height: 120, ...common }))
+    }
+
+    if (shape === 'rectangle') {
+      centerObject(new Rect({ width: 190, height: 90, ...common }))
+    }
+
+    if (shape === 'half-rectangle') {
+      centerObject(
+        new Polygon(
+          [
+            { x: -95, y: -45 },
+            { x: 95, y: -45 },
+            { x: 0, y: 45 },
+            { x: -95, y: 45 },
+          ],
+          common,
+        ),
+      )
     }
 
     if (shape === 'rounded-rectangle' || shape === 'terminator') {
@@ -216,6 +245,12 @@ function App() {
 
     if (shape === 'circle') {
       centerObject(new Circle({ radius: 56, ...common }))
+    }
+
+    if (shape === 'half-circle') {
+      centerObject(
+        new Path('M 0 70 A 70 70 0 0 1 140 70 L 0 70 Z', common),
+      )
     }
 
     if (shape === 'triangle') {
@@ -288,13 +323,13 @@ function App() {
     }
 
     if (shape === 'gradient-block') {
-      centerObject(new Rect({ width: 120, height: 120, fill: '#facc15', opacity: 0.7 }))
+      centerObject(new Rect({ width: 120, height: 120, fill: '#ffffff', opacity: 0.7 }))
     }
 
     if (shape === 'line') {
       centerObject(
         new Line([0, 0, 260, 0], {
-          stroke: '#facc15',
+          stroke: '#ffffff',
           strokeWidth: 8,
           strokeLineCap: 'round',
         }),
@@ -304,7 +339,7 @@ function App() {
     if (shape === 'dashed-line' || shape === 'dotted-line') {
       centerObject(
         new Line([0, 0, 260, 0], {
-          stroke: '#facc15',
+          stroke: '#ffffff',
           strokeDashArray: shape === 'dashed-line' ? [18, 12] : [3, 12],
           strokeWidth: 8,
           strokeLineCap: 'round',
@@ -316,7 +351,7 @@ function App() {
       centerObject(
         new Path('M 0 20 L 210 20 M 170 0 L 210 20 L 170 40', {
           fill: '',
-          stroke: '#facc15',
+          stroke: '#ffffff',
           strokeWidth: shape === 'thin-arrow' ? 4 : 8,
           strokeLineCap: 'round',
           strokeLineJoin: 'round',
@@ -356,6 +391,8 @@ function App() {
       object.set({
         path: undefined,
         curveAmount: 0,
+        warpAmount: 0,
+        warpType: 'none',
       })
     } else {
       const pathWidth = Math.max(object.width || object.getScaledWidth(), 140)
@@ -374,9 +411,74 @@ function App() {
         pathSide: 'left',
         pathStartOffset: 0,
         curveAmount: curve,
+        warpAmount: 0,
+        warpType: 'none',
       })
     }
 
+    object.setPositionByOrigin(center, 'center', 'center')
+  }
+
+  const getWarpPath = (warpType, pathWidth, warpAmount) => {
+    const bend = Math.max(Number(warpAmount) || 0, 0)
+    const high = bend * -1
+    const low = bend
+
+    const paths = {
+      arc: `M 0 0 Q ${pathWidth / 2} ${high} ${pathWidth} 0`,
+      'arc-lower': `M 0 0 Q ${pathWidth / 2} ${low} ${pathWidth} 0`,
+      'arc-upper': `M 0 ${bend / 2} Q ${pathWidth / 2} ${high} ${pathWidth} ${bend / 2}`,
+      arch: `M 0 ${bend / 2} Q ${pathWidth / 2} ${high * 1.25} ${pathWidth} ${bend / 2}`,
+      bulge: `M 0 0 C ${pathWidth * 0.25} ${high} ${pathWidth * 0.75} ${high} ${pathWidth} 0`,
+      'shell-lower': `M 0 ${low / 2} Q ${pathWidth / 2} ${low * 1.45} ${pathWidth} ${low / 2}`,
+      'shell-upper': `M 0 ${high / 2} Q ${pathWidth / 2} ${high * 1.45} ${pathWidth} ${high / 2}`,
+      flag: `M 0 0 C ${pathWidth * 0.25} ${high} ${pathWidth * 0.5} ${low} ${pathWidth} 0`,
+      wave: `M 0 0 C ${pathWidth * 0.25} ${high} ${pathWidth * 0.35} ${low} ${pathWidth * 0.5} 0 S ${pathWidth * 0.75} ${high} ${pathWidth} 0`,
+      fish: `M 0 0 C ${pathWidth * 0.3} ${high * 1.2} ${pathWidth * 0.7} ${low * 1.2} ${pathWidth} 0`,
+      rise: `M 0 ${bend} L ${pathWidth} ${high}`,
+      fisheye: `M 0 0 C ${pathWidth * 0.2} ${low} ${pathWidth * 0.8} ${high} ${pathWidth} 0`,
+      inflate: `M 0 0 Q ${pathWidth / 2} ${high * 1.6} ${pathWidth} 0`,
+      squeeze: `M 0 0 Q ${pathWidth / 2} ${low * 1.1} ${pathWidth} 0`,
+      twist: `M 0 0 C ${pathWidth * 0.2} ${high * 1.4} ${pathWidth * 0.35} ${low * 1.4} ${pathWidth * 0.5} 0 S ${pathWidth * 0.8} ${high * 1.4} ${pathWidth} 0`,
+    }
+
+    return paths[warpType]
+  }
+
+  const applyTextWarp = (object, warpType, warpAmount) => {
+    const type = warpType || 'none'
+    const amount = Math.max(Number(warpAmount) || 0, 0)
+    const center = object.getCenterPoint()
+
+    if (type === 'none' || amount === 0) {
+      object.set({
+        path: undefined,
+        curveAmount: 0,
+        warpAmount: 0,
+        warpType: type,
+      })
+      object.setPositionByOrigin(center, 'center', 'center')
+      return
+    }
+
+    const pathWidth = Math.max(object.width || object.getScaledWidth(), 140)
+    const pathData = getWarpPath(type, pathWidth, amount)
+
+    if (!pathData) return
+
+    object.set({
+      path: new Path(pathData, {
+        visible: false,
+        selectable: false,
+        evented: false,
+      }),
+      pathAlign: 'center',
+      pathSide: 'left',
+      pathStartOffset: 0,
+      curveAmount: 0,
+      warpAmount: amount,
+      warpType: type,
+    })
     object.setPositionByOrigin(center, 'center', 'center')
   }
 
@@ -391,6 +493,49 @@ function App() {
     object.dirty = true
     object.initDimensions?.()
     object.setCoords()
+  }
+
+  const convertToTextbox = (object, width) => {
+    const wrapWidth = Math.max(Number(width) || 560, 80)
+
+    if (object.type === 'Textbox' || object.type === 'textbox') {
+      object.set({ width: wrapWidth, scaleX: 1 })
+      return object
+    }
+
+    const index = canvas.getObjects().indexOf(object)
+    const textbox = new Textbox(object.text, {
+      angle: object.angle,
+      charSpacing: object.charSpacing,
+      fill: object.fill,
+      fontFamily: object.fontFamily,
+      fontSize: object.fontSize,
+      fontStyle: object.fontStyle,
+      fontWeight: object.fontWeight,
+      left: object.left,
+      lineHeight: object.lineHeight,
+      opacity: object.opacity,
+      originX: object.originX,
+      originY: object.originY,
+      paintFirst: object.paintFirst,
+      scaleX: 1,
+      scaleY: object.scaleY,
+      skewX: object.skewX,
+      skewY: object.skewY,
+      stroke: object.stroke,
+      strokeWidth: object.strokeWidth,
+      textAlign: object.textAlign,
+      top: object.top,
+      warpAmount: object.warpAmount,
+      warpType: object.warpType,
+      width: wrapWidth,
+    })
+
+    canvas.remove(object)
+    canvas.insertAt(Math.max(index, 0), textbox)
+    canvas.setActiveObject(textbox)
+    setActiveObject(textbox)
+    return textbox
   }
 
   const setBackground = (color) => {
@@ -417,29 +562,74 @@ function App() {
 
   const updateActiveObject = async (updates) => {
     if (!canvas || !activeObject) return
+    let targetObject = activeObject
 
-    if ('curveAmount' in updates && typeof activeObject.text === 'string') {
+    if (
+      ('warpType' in updates || 'warpAmount' in updates) &&
+      typeof activeObject.text === 'string'
+    ) {
+      activeObject.set({
+        skewX: updates.skewX ?? activeObject.skewX,
+        skewY: updates.skewY ?? activeObject.skewY,
+      })
+      applyTextWarp(
+        activeObject,
+        updates.warpType ?? activeObject.warpType ?? 'arc',
+        updates.warpAmount ?? activeObject.warpAmount ?? 80,
+      )
+    } else if ('curveAmount' in updates && typeof activeObject.text === 'string') {
       applyTextCurve(activeObject, updates.curveAmount)
+    } else if ('wrapWidth' in updates && typeof activeObject.text === 'string') {
+      targetObject = convertToTextbox(activeObject, Number(updates.wrapWidth))
+      await refreshTextObject(targetObject)
+
+      if (targetObject.warpType && targetObject.warpType !== 'none') {
+        applyTextWarp(targetObject, targetObject.warpType, targetObject.warpAmount)
+        await refreshTextObject(targetObject)
+      } else if (targetObject.curveAmount && typeof targetObject.text === 'string') {
+        applyTextCurve(targetObject, targetObject.curveAmount)
+        await refreshTextObject(targetObject)
+      }
     } else {
       activeObject.set(updates)
       await refreshTextObject(activeObject)
 
-      if (activeObject.curveAmount && typeof activeObject.text === 'string') {
+      if (activeObject.warpType && activeObject.warpType !== 'none') {
+        applyTextWarp(activeObject, activeObject.warpType, activeObject.warpAmount)
+        await refreshTextObject(activeObject)
+      } else if (activeObject.curveAmount && typeof activeObject.text === 'string') {
         applyTextCurve(activeObject, activeObject.curveAmount)
         await refreshTextObject(activeObject)
       }
     }
 
-    await refreshTextObject(activeObject)
-    activeObject.setCoords()
+    await refreshTextObject(targetObject)
+    targetObject.setCoords()
     canvas.requestRenderAll()
-    setActiveObject(activeObject)
+    setActiveObject(targetObject)
     setActiveObjectVersion((version) => version + 1)
   }
 
   const commitActiveObject = () => {
     if (!canvas) return
     canvas.getActiveObject()?.setCoords()
+    pushHistory(canvas)
+  }
+
+  const changeLayer = (action) => {
+    if (!canvas || !activeObject) return
+
+    const layerActions = {
+      backward: () => canvas.sendObjectBackwards(activeObject),
+      back: () => canvas.sendObjectToBack(activeObject),
+      forward: () => canvas.bringObjectForward(activeObject),
+      front: () => canvas.bringObjectToFront(activeObject),
+    }
+
+    layerActions[action]?.()
+    canvas.setActiveObject(activeObject)
+    canvas.requestRenderAll()
+    setActiveObjectVersion((version) => version + 1)
     pushHistory(canvas)
   }
 
@@ -456,7 +646,7 @@ function App() {
       STORAGE_KEY,
       JSON.stringify({
         signSize,
-        canvas: canvas.toJSON(['curveAmount']),
+        canvas: canvas.toJSON(FABRIC_CUSTOM_PROPS),
       }),
     )
     setMessage('Saved locally')
@@ -533,6 +723,7 @@ function App() {
           activeObject={activeObject}
           onCommit={commitActiveObject}
           onDelete={deleteActiveObject}
+          onLayerChange={changeLayer}
           onUpdate={updateActiveObject}
         />
       </section>

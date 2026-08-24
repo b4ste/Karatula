@@ -3,9 +3,14 @@ import {
   AlignCenter,
   AlignLeft,
   AlignRight,
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
   Bold,
   Italic,
   RotateCcw,
+  RefreshCw,
   Trash2,
 } from 'lucide-react'
 import { CUSTOM_FONTS, DEFAULT_FONT } from '../utils/fonts'
@@ -14,8 +19,34 @@ function numberValue(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)) : fallback
 }
 
-function PropertiesPanel({ activeObject, onCommit, onDelete, onUpdate }) {
+const WARP_OPTIONS = [
+  ['none', 'None'],
+  ['arc', 'Arc'],
+  ['arc-lower', 'Arc Lower'],
+  ['arc-upper', 'Arc Upper'],
+  ['arch', 'Arch'],
+  ['bulge', 'Bulge'],
+  ['shell-lower', 'Shell Lower'],
+  ['shell-upper', 'Shell Upper'],
+  ['flag', 'Flag'],
+  ['wave', 'Wave'],
+  ['fish', 'Fish'],
+  ['rise', 'Rise'],
+  ['fisheye', 'FishEye'],
+  ['inflate', 'Inflate'],
+  ['squeeze', 'Squeeze'],
+  ['twist', 'Twist'],
+]
+
+function PropertiesPanel({
+  activeObject,
+  onCommit,
+  onDelete,
+  onLayerChange,
+  onUpdate,
+}) {
   const [showCurveResetModal, setShowCurveResetModal] = useState(false)
+  const [showWarpResetModal, setShowWarpResetModal] = useState(false)
   const isText = typeof activeObject?.text === 'string'
 
   if (!activeObject) {
@@ -165,6 +196,97 @@ function PropertiesPanel({ activeObject, onCommit, onDelete, onUpdate }) {
                 />
               </label>
 
+              <label>
+                Text box width
+                <input
+                  min="80"
+                  type="number"
+                  value={numberValue(activeObject.width, 560)}
+                  onBlur={onCommit}
+                  onChange={(event) =>
+                    onUpdate({ wrapWidth: Number(event.target.value) })
+                  }
+                />
+              </label>
+
+              <div className="property-group">
+                <label>
+                  Warp style
+                  <select
+                    value={activeObject.warpType || 'none'}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({
+                        warpAmount: activeObject.warpAmount || 80,
+                        warpType: event.target.value,
+                      })
+                    }
+                  >
+                    {WARP_OPTIONS.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label>
+                  Warp strength
+                  <input
+                    max="160"
+                    min="0"
+                    step="5"
+                    type="range"
+                    value={numberValue(activeObject.warpAmount, 0)}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({ warpAmount: Number(event.target.value) })
+                    }
+                  />
+                </label>
+
+                <div className="inline-property">
+                  <label>
+                    Distort X
+                    <input
+                      max="45"
+                      min="-45"
+                      step="1"
+                      type="range"
+                      value={numberValue(activeObject.skewX, 0)}
+                      onBlur={onCommit}
+                      onChange={(event) =>
+                        onUpdate({ skewX: Number(event.target.value) })
+                      }
+                    />
+                  </label>
+                  <button
+                    aria-label="Reset warp"
+                    className="icon-button"
+                    title="Reset warp"
+                    type="button"
+                    onClick={() => setShowWarpResetModal(true)}
+                  >
+                    <RotateCcw size={16} />
+                  </button>
+                </div>
+
+                <label>
+                  Distort Y
+                  <input
+                    max="45"
+                    min="-45"
+                    step="1"
+                    type="range"
+                    value={numberValue(activeObject.skewY, 0)}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({ skewY: Number(event.target.value) })
+                    }
+                  />
+                </label>
+              </div>
+
               <div className="inline-property">
                 <label>
                   Curve
@@ -216,15 +338,72 @@ function PropertiesPanel({ activeObject, onCommit, onDelete, onUpdate }) {
             />
           </label>
 
-          <label>
-            Outline color
-            <input
-              type="color"
-              value={activeObject.stroke || '#111111'}
-              onBlur={onCommit}
-              onChange={(event) => onUpdate({ stroke: event.target.value })}
-            />
-          </label>
+          <div className="inline-property">
+            <label>
+              Outline color
+              <input
+                type="color"
+                value={activeObject.stroke || '#111111'}
+                onBlur={onCommit}
+                onChange={(event) => onUpdate({ stroke: event.target.value })}
+              />
+            </label>
+            <button
+              aria-label="Sync outline color with fill color"
+              className="icon-button"
+              title="Sync outline color with fill color"
+              type="button"
+              onClick={() => {
+                onUpdate({
+                  stroke:
+                    typeof activeObject.fill === 'string'
+                      ? activeObject.fill
+                      : '#ffffff',
+                })
+                onCommit()
+              }}
+            >
+              <RefreshCw size={16} />
+            </button>
+          </div>
+
+          <div className="property-group">
+            <h3>Layer</h3>
+            <div className="layer-controls">
+              <button
+                aria-label="Send to back"
+                title="Send to back"
+                type="button"
+                onClick={() => onLayerChange('back')}
+              >
+                <ArrowDownToLine size={16} />
+              </button>
+              <button
+                aria-label="Send backward"
+                title="Send backward"
+                type="button"
+                onClick={() => onLayerChange('backward')}
+              >
+                <ArrowDown size={16} />
+              </button>
+              <button
+                aria-label="Bring forward"
+                title="Bring forward"
+                type="button"
+                onClick={() => onLayerChange('forward')}
+              >
+                <ArrowUp size={16} />
+              </button>
+              <button
+                aria-label="Bring to front"
+                title="Bring to front"
+                type="button"
+                onClick={() => onLayerChange('front')}
+              >
+                <ArrowUpToLine size={16} />
+              </button>
+            </div>
+          </div>
 
           <label>
             Opacity
@@ -326,6 +505,44 @@ function PropertiesPanel({ activeObject, onCommit, onDelete, onUpdate }) {
                   onUpdate({ curveAmount: 0 })
                   onCommit()
                   setShowCurveResetModal(false)
+                }}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showWarpResetModal && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            aria-labelledby="warp-reset-title"
+            aria-modal="true"
+            className="confirm-modal"
+            role="dialog"
+          >
+            <h2 id="warp-reset-title">Reset warp?</h2>
+            <p>This will remove the selected text distortion.</p>
+            <div className="modal-actions">
+              <button
+                type="button"
+                onClick={() => setShowWarpResetModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={() => {
+                  onUpdate({
+                    skewX: 0,
+                    skewY: 0,
+                    warpAmount: 0,
+                    warpType: 'none',
+                  })
+                  onCommit()
+                  setShowWarpResetModal(false)
                 }}
               >
                 Reset
