@@ -1,0 +1,27 @@
+export const CUSTOM_FONTS = [
+  'Batangas Bold',
+  'Cubao Narrow',
+  'Cubao Regular',
+  'Cubao Wide',
+  'Dangwa',
+  'Kagitingan Bold',
+  'Kawit Condensed Italic',
+  'Kawit Extended Italic',
+  'Kawit Italic',
+  'Martires Black',
+  'Martires Bold',
+  'Martires Demi Bold',
+  'Martires Extra Bold',
+  'Martires Extra Light',
+  'Martires Heavy',
+  'Martires Light',
+  'Martires Medium',
+  'Martires Regular',
+  'Martires Semi Bold',
+  'Martires Thin',
+  'Martires Ultra Bold',
+  'Martires Ultra Light',
+  'Quiapo',
+]
+
+export const DEFAULT_FONT = 'Cubao Regular'
