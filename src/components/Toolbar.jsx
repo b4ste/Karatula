@@ -3,8 +3,7 @@ import {
   FileDown,
   Printer,
   Redo2,
-  RotateCcw,
-  Save,
+  Settings,
   Undo2,
 } from 'lucide-react'
 
@@ -16,8 +15,7 @@ function Toolbar({
   onExportPng,
   onPrint,
   onRedo,
-  onRestore,
-  onSave,
+  onSettings,
   onUndo,
 }) {
   return (
@@ -30,31 +28,55 @@ function Toolbar({
       </div>
 
       <div className="topbar-actions">
-        <button type="button" disabled={!canUndo} title="Undo" onClick={onUndo}>
+        <button
+          aria-label="Undo"
+          type="button"
+          disabled={!canUndo}
+          title="Undo"
+          onClick={onUndo}
+        >
           <Undo2 size={18} />
         </button>
-        <button type="button" disabled={!canRedo} title="Redo" onClick={onRedo}>
+        <button
+          aria-label="Redo"
+          type="button"
+          disabled={!canRedo}
+          title="Redo"
+          onClick={onRedo}
+        >
           <Redo2 size={18} />
         </button>
-        <button type="button" title="Restore saved design" onClick={onRestore}>
-          <RotateCcw size={18} />
-          Restore
-        </button>
-        <button type="button" title="Save locally" onClick={onSave}>
-          <Save size={18} />
-          Save
-        </button>
-        <button type="button" title="Download PNG" onClick={onExportPng}>
+        <button
+          aria-label="Download PNG"
+          type="button"
+          title="Download PNG"
+          onClick={onExportPng}
+        >
           <Download size={18} />
-          PNG
         </button>
-        <button type="button" title="Export PDF" onClick={onExportPdf}>
+        <button
+          aria-label="Export PDF"
+          type="button"
+          title="Export PDF"
+          onClick={onExportPdf}
+        >
           <FileDown size={18} />
-          PDF
         </button>
-        <button type="button" title="Print sign" onClick={onPrint}>
+        <button
+          aria-label="Print sign"
+          type="button"
+          title="Print sign"
+          onClick={onPrint}
+        >
           <Printer size={18} />
-          Print
+        </button>
+        <button
+          aria-label="Settings"
+          type="button"
+          title="Settings"
+          onClick={onSettings}
+        >
+          <Settings size={18} />
         </button>
       </div>
     </header>

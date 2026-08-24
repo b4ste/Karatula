@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import {
   AlignCenter,
   AlignLeft,
@@ -38,6 +38,49 @@ const WARP_OPTIONS = [
   ['twist', 'Twist'],
 ]
 
+function getWarpPreviewPath(type) {
+  const paths = {
+    arc: 'M 12 24 Q 62 6 112 24',
+    'arc-lower': 'M 12 14 Q 62 30 112 14',
+    'arc-upper': 'M 12 24 Q 62 4 112 24',
+    arch: 'M 12 28 Q 62 -2 112 28',
+    bulge: 'M 12 18 C 36 5 88 5 112 18',
+    'shell-lower': 'M 12 14 Q 62 34 112 14',
+    'shell-upper': 'M 12 26 Q 62 0 112 26',
+    flag: 'M 12 20 C 34 5 58 32 112 16',
+    wave: 'M 12 20 C 32 6 42 34 62 20 S 92 6 112 20',
+    fish: 'M 12 18 C 42 2 82 34 112 18',
+    rise: 'M 12 28 L 112 8',
+    fisheye: 'M 12 18 C 34 32 90 4 112 18',
+    inflate: 'M 12 26 Q 62 -2 112 26',
+    squeeze: 'M 12 12 Q 62 32 112 12',
+    twist: 'M 12 20 C 28 0 46 36 62 18 S 94 0 112 20',
+  }
+
+  return paths[type] || 'M 12 20 L 112 20'
+}
+
+function WarpPreview({ label, type }) {
+  const previewId = useId()
+  const pathId = `warp-preview-${type}-${previewId}`
+
+  if (type === 'none') {
+    return <span className="warp-preview-plain">WARP</span>
+  }
+
+  return (
+    <svg aria-hidden="true" className="warp-preview" viewBox="0 0 124 36">
+      <path d={getWarpPreviewPath(type)} fill="none" id={pathId} />
+      <text>
+        <textPath href={`#${pathId}`} startOffset="50%" textAnchor="middle">
+          WARP
+        </textPath>
+      </text>
+      <title>{label}</title>
+    </svg>
+  )
+}
+
 function PropertiesPanel({
   activeObject,
   onCommit,
@@ -47,6 +90,7 @@ function PropertiesPanel({
 }) {
   const [showCurveResetModal, setShowCurveResetModal] = useState(false)
   const [showWarpResetModal, setShowWarpResetModal] = useState(false)
+  const [showWarpPicker, setShowWarpPicker] = useState(false)
   const isText = typeof activeObject?.text === 'string'
 
   if (!activeObject) {
@@ -62,6 +106,9 @@ function PropertiesPanel({
 
   const scaledWidth = numberValue(activeObject.width * activeObject.scaleX)
   const scaledHeight = numberValue(activeObject.height * activeObject.scaleY)
+  const selectedWarp =
+    WARP_OPTIONS.find(([value]) => value === (activeObject.warpType || 'none')) ||
+    WARP_OPTIONS[0]
 
   const setScaledSize = (key, value) => {
     const next = Math.max(Number(value), 1)
@@ -187,7 +234,8 @@ function PropertiesPanel({
                 <input
                   max="500"
                   min="0"
-                  type="number"
+                  step="5"
+                  type="range"
                   value={numberValue(activeObject.charSpacing, 0)}
                   onBlur={onCommit}
                   onChange={(event) =>
@@ -210,25 +258,45 @@ function PropertiesPanel({
               </label>
 
               <div className="property-group">
-                <label>
-                  Warp style
-                  <select
-                    value={activeObject.warpType || 'none'}
-                    onBlur={onCommit}
-                    onChange={(event) =>
-                      onUpdate({
-                        warpAmount: activeObject.warpAmount || 80,
-                        warpType: event.target.value,
-                      })
-                    }
+                <div className="warp-style-picker">
+                  <span className="property-label">Warp style</span>
+                  <button
+                    aria-expanded={showWarpPicker}
+                    className="warp-selected"
+                    type="button"
+                    onClick={() => setShowWarpPicker((isOpen) => !isOpen)}
                   >
-                    {WARP_OPTIONS.map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    <WarpPreview label={selectedWarp[1]} type={selectedWarp[0]} />
+                    <span>{selectedWarp[1]}</span>
+                  </button>
+
+                  {showWarpPicker && (
+                    <div className="warp-options">
+                      {WARP_OPTIONS.map(([value, label]) => (
+                        <button
+                          className={
+                            value === (activeObject.warpType || 'none')
+                              ? 'is-active'
+                              : ''
+                          }
+                          key={value}
+                          type="button"
+                          onClick={() => {
+                            onUpdate({
+                              warpAmount: activeObject.warpAmount || 80,
+                              warpType: value,
+                            })
+                            onCommit()
+                            setShowWarpPicker(false)
+                          }}
+                        >
+                          <WarpPreview label={label} type={value} />
+                          <span>{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <label>
                   Warp strength

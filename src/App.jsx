@@ -20,8 +20,9 @@ import { downloadPng, exportPdf, printCanvas } from './utils/exportUtils'
 import { DEFAULT_FONT } from './utils/fonts'
 import './index.css'
 
-const STORAGE_KEY = 'jeepney-sign-maker-design'
 const FABRIC_CUSTOM_PROPS = ['curveAmount', 'warpType', 'warpAmount']
+const DEFAULT_SITE_BACKGROUND = '#071426'
+const siteBackgrounds = ['#071426', '#0b1b30', '#111111', '#ffffff', '#dc2626', '#facc15', '#2563eb']
 
 const initialSize = {
   type: 'fixed',
@@ -58,7 +59,9 @@ function App() {
   const [history, setHistory] = useState([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [isRestoring, setIsRestoring] = useState(false)
-  const [message, setMessage] = useState('By Baste')
+  const [message] = useState('By Baste')
+  const [showSettings, setShowSettings] = useState(false)
+  const [siteBackground, setSiteBackground] = useState(DEFAULT_SITE_BACKGROUND)
   const fileInputRef = useRef(null)
   const historyRef = useRef({ history: [], index: -1, isRestoring: false })
 
@@ -640,42 +643,13 @@ function App() {
     canvas.requestRenderAll()
   }
 
-  const saveDesign = () => {
-    if (!canvas) return
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        signSize,
-        canvas: canvas.toJSON(FABRIC_CUSTOM_PROPS),
-      }),
-    )
-    setMessage('Saved locally')
-  }
-
-  const restoreSavedDesign = async () => {
-    if (!canvas) return
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (!saved) {
-      setMessage('No saved design yet')
-      return
-    }
-
-    const parsed = JSON.parse(saved)
-    if (parsed.signSize) setSignSize(parsed.signSize)
-    historyRef.current.isRestoring = true
-    setIsRestoring(true)
-    await canvas.loadFromJSON(parsed.canvas)
-    canvas.requestRenderAll()
-    historyRef.current.isRestoring = false
-    setIsRestoring(false)
-    pushHistory(canvas)
-    setMessage('Restored saved design')
-  }
-
   const selectedPixels = getCanvasPixels(signSize)
 
   return (
-    <main className="app-shell">
+    <main
+      className="app-shell"
+      style={{ '--site-background': siteBackground }}
+    >
       <Toolbar
         canRedo={historyIndex < history.length - 1}
         canUndo={historyIndex > 0}
@@ -684,8 +658,7 @@ function App() {
         onExportPng={() => canvas && downloadPng(canvas, signSize)}
         onPrint={() => canvas && printCanvas(canvas, signSize)}
         onRedo={redo}
-        onRestore={restoreSavedDesign}
-        onSave={saveDesign}
+        onSettings={() => setShowSettings(true)}
         onUndo={undo}
       />
 
@@ -756,6 +729,53 @@ function App() {
           Image
         </button>
       </div>
+
+      {showSettings && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            aria-labelledby="settings-title"
+            aria-modal="true"
+            className="confirm-modal settings-modal"
+            role="dialog"
+          >
+            <h2 id="settings-title">Settings</h2>
+            <div className="settings-field">
+              <span className="property-label">Site background</span>
+              <div className="swatches">
+                {siteBackgrounds.map((color) => (
+                  <button
+                    aria-label={`Set site background ${color}`}
+                    className={siteBackground === color ? 'is-selected' : ''}
+                    key={color}
+                    style={{ background: color }}
+                    type="button"
+                    onClick={() => setSiteBackground(color)}
+                  />
+                ))}
+                <label className="color-picker">
+                  <Image size={18} />
+                  <input
+                    type="color"
+                    value={siteBackground}
+                    onChange={(event) => setSiteBackground(event.target.value)}
+                  />
+                </label>
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                onClick={() => setSiteBackground(DEFAULT_SITE_BACKGROUND)}
+              >
+                Reset
+              </button>
+              <button type="button" onClick={() => setShowSettings(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

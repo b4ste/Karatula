@@ -113,142 +113,142 @@ function LeftSidebar({
       .includes(shapeSearch.toLowerCase()),
   )
 
-  if (activePanel === 'shapes') {
-    return (
-      <aside className="sidebar left-sidebar shape-browser">
-        <div className="panel-header">
-          <button
-            aria-label="Back"
-            className="ghost-icon-button"
-            type="button"
-            onClick={() => setActivePanel('main')}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <h2>Shapes</h2>
-        </div>
-
-        <label className="shape-search">
-          <Search size={16} />
-          <input
-            placeholder="Search shapes"
-            type="search"
-            value={shapeSearch}
-            onChange={(event) => setShapeSearch(event.target.value)}
-          />
-        </label>
-
-        <div className="shape-grid">
-          {filteredShapes.map((shape) => (
-            <button
-              aria-label={shapeLabels[shape] || shape}
-              className="shape-choice"
-              key={shape}
-              title={shapeLabels[shape] || shape}
-              type="button"
-              onClick={() => onAddShape(shape)}
-            >
-              <span className={`shape-preview shape-${shape}`} />
-            </button>
-          ))}
-        </div>
-      </aside>
-    )
-  }
-
   return (
-    <aside className="sidebar left-sidebar">
-      <section>
-        <h2>Size</h2>
-        <div className="custom-size">
-          <label>
-            W cm
-            <input
-              min="20"
-              type="number"
-              value={customSize.widthCm}
-              onChange={(event) =>
-                updateCustomSize('widthCm', event.target.value)
-              }
-            />
-          </label>
-          <label>
-            H cm
-            <input
-              min="10"
-              type="number"
-              value={customSize.heightCm}
-              onChange={(event) =>
-                updateCustomSize('heightCm', event.target.value)
-              }
-            />
-          </label>
-        </div>
-      </section>
+    <aside className="sidebar left-sidebar sidebar-slider">
+      <div className={`sidebar-track is-${activePanel}`}>
+        <div className="sidebar-panel">
+          <section>
+            <h2>Size</h2>
+            <div className="custom-size">
+              <label>
+                W cm
+                <input
+                  min="20"
+                  type="number"
+                  value={customSize.widthCm}
+                  onChange={(event) =>
+                    updateCustomSize('widthCm', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                H cm
+                <input
+                  min="10"
+                  type="number"
+                  value={customSize.heightCm}
+                  onChange={(event) =>
+                    updateCustomSize('heightCm', event.target.value)
+                  }
+                />
+              </label>
+            </div>
+          </section>
 
-      <section>
-        <h2>Text</h2>
-        <label>
-          Route text
-          <textarea
-            rows="3"
-            value={routeText}
-            onChange={(event) => setRouteText(event.target.value)}
-          />
-        </label>
-        <button
-          type="button"
-          onClick={() => onAddText(routeText.trim() || defaultRouteText)}
-        >
-          <Type size={18} />
-          Add text
-        </button>
-      </section>
-
-      <section>
-        <button
-          className="section-toggle"
-          type="button"
-          onClick={() => setActivePanel('shapes')}
-        >
-          <span>
-            <Square size={18} />
-            Shapes
-          </span>
-          <MoveRight size={18} />
-        </button>
-      </section>
-
-      <section>
-        <h2>Upload</h2>
-        <button type="button" onClick={onPickUpload}>
-          <Image size={18} />
-          Upload image
-        </button>
-      </section>
-
-      <section>
-        <h2>Background</h2>
-        <div className="swatches">
-          {backgrounds.map((color) => (
+          <section>
+            <h2>Text</h2>
+            <label>
+              Route text
+              <textarea
+                rows="3"
+                value={routeText}
+                onChange={(event) => setRouteText(event.target.value)}
+              />
+            </label>
             <button
-              aria-label={`Set background ${color}`}
-              key={color}
-              style={{ background: color }}
               type="button"
-              onClick={() => onBackgroundChange(color)}
-            />
-          ))}
-          <label className="color-picker">
-            <Palette size={18} />
+              onClick={() => onAddText(routeText.trim() || defaultRouteText)}
+            >
+              <Type size={18} />
+              <span className="add-text-button-text">Add text</span>
+            </button>
+          </section>
+
+          <section>
+            <button
+              className="section-toggle"
+              type="button"
+              onClick={() => setActivePanel('shapes')}
+            >
+              <span>
+                <Square size={18} />
+                <span className="shapes-button-text">Shapes</span>
+              </span>
+              <MoveRight size={18} />
+            </button>
+          </section>
+
+          <section>
+            <h2>Upload</h2>
+            <button type="button" onClick={onPickUpload}>
+              <Image size={18} />
+              <span className="upload-button-text">Upload image</span>
+            </button>
+          </section>
+
+          <section>
+            <h2>Background</h2>
+            <div className="swatches">
+              {backgrounds.map((color) => (
+                <button
+                  aria-label={`Set background ${color}`}
+                  key={color}
+                  style={{ background: color }}
+                  type="button"
+                  onClick={() => onBackgroundChange(color)}
+                />
+              ))}
+              <label className="color-picker">
+                <Palette size={18} />
+                <input
+                  type="color"
+                  defaultValue="#111111"
+                  onChange={(event) => onBackgroundChange(event.target.value)}
+                />
+              </label>
+            </div>
+          </section>
+        </div>
+
+        <div className="sidebar-panel shape-browser">
+          <div className="panel-header">
+            <button
+              aria-label="Back"
+              className="ghost-icon-button"
+              type="button"
+              onClick={() => setActivePanel('main')}
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <h2>Shapes</h2>
+          </div>
+
+          <label className="shape-search">
+            <Search size={16} />
             <input
-              type="color"
-              defaultValue="#111111"
-              onChange={(event) => onBackgroundChange(event.target.value)}
+              placeholder="Search shapes"
+              type="search"
+              value={shapeSearch}
+              onChange={(event) => setShapeSearch(event.target.value)}
             />
           </label>
+
+          <div className="shape-grid">
+            {filteredShapes.map((shape) => (
+              <button
+                aria-label={shapeLabels[shape] || shape}
+                className="shape-choice"
+                key={shape}
+                title={shapeLabels[shape] || shape}
+                type="button"
+                onClick={() => onAddShape(shape)}
+              >
+                <span className={`shape-preview shape-${shape}`} />
+              </button>
+            ))}
+          </div>
         </div>
-      </section>
+      </div>
     </aside>
   )
 }
