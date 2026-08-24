@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   Circle,
   FabricImage,
+  Gradient,
   Line,
   Path,
   Polygon,
@@ -22,7 +23,15 @@ import './index.css'
 
 const FABRIC_CUSTOM_PROPS = ['curveAmount', 'warpType', 'warpAmount']
 const DEFAULT_SITE_BACKGROUND = '#071426'
-const siteBackgrounds = ['#071426', '#0b1b30', '#111111', '#ffffff', '#dc2626', '#facc15', '#2563eb']
+const siteBackgrounds = [
+  '#071426',
+  '#0b1b30',
+  '#111111',
+  '#ffffff',
+  '#dc2626',
+  '#facc15',
+  '#2563eb',
+]
 
 const initialSize = {
   type: 'fixed',
@@ -548,6 +557,50 @@ function App() {
     pushHistory(canvas)
   }
 
+  const setBackgroundGradient = (startColor, endColor) => {
+    if (!canvas) return
+
+    canvas.set({
+      backgroundColor: new Gradient({
+        type: 'linear',
+        gradientUnits: 'pixels',
+        coords: {
+          x1: 0,
+          y1: 0,
+          x2: canvas.width,
+          y2: 0,
+        },
+        colorStops: [
+          { offset: 0, color: startColor },
+          { offset: 1, color: endColor },
+        ],
+      }),
+    })
+    canvas.requestRenderAll()
+    pushHistory(canvas)
+  }
+
+  const applyObjectGradient = (object, startColor, endColor) => {
+    const width = Math.max(object.width || object.getScaledWidth(), 1)
+
+    object.set({
+      fill: new Gradient({
+        type: 'linear',
+        gradientUnits: 'pixels',
+        coords: {
+          x1: -width / 2,
+          y1: 0,
+          x2: width / 2,
+          y2: 0,
+        },
+        colorStops: [
+          { offset: 0, color: startColor },
+          { offset: 1, color: endColor },
+        ],
+      }),
+    })
+  }
+
   const uploadImage = (event) => {
     const file = event.target.files?.[0]
     if (!file || !canvas) return
@@ -568,6 +621,15 @@ function App() {
     let targetObject = activeObject
 
     if (
+      'gradientFill' in updates &&
+      typeof updates.gradientFill === 'object'
+    ) {
+      applyObjectGradient(
+        activeObject,
+        updates.gradientFill.start,
+        updates.gradientFill.end,
+      )
+    } else if (
       ('warpType' in updates || 'warpAmount' in updates) &&
       typeof activeObject.text === 'string'
     ) {
@@ -668,6 +730,7 @@ function App() {
           onAddShape={addShape}
           onAddText={addText}
           onBackgroundChange={setBackground}
+          onBackgroundGradientChange={setBackgroundGradient}
           onPickUpload={() => fileInputRef.current?.click()}
           onSizeChange={setSignSize}
         />
@@ -762,10 +825,13 @@ function App() {
                 </label>
               </div>
             </div>
+
             <div className="modal-actions">
               <button
                 type="button"
-                onClick={() => setSiteBackground(DEFAULT_SITE_BACKGROUND)}
+                onClick={() => {
+                  setSiteBackground(DEFAULT_SITE_BACKGROUND)
+                }}
               >
                 Reset
               </button>

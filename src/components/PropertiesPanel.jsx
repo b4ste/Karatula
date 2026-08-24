@@ -19,6 +19,14 @@ function numberValue(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)) : fallback
 }
 
+function colorValue(value, fallback = '#ffffff') {
+  return typeof value === 'string' && value.startsWith('#') ? value : fallback
+}
+
+function gradientColor(value, index, fallback) {
+  return value?.colorStops?.[index]?.color || fallback
+}
+
 const WARP_OPTIONS = [
   ['none', 'None'],
   ['arc', 'Arc'],
@@ -106,6 +114,7 @@ function PropertiesPanel({
 
   const scaledWidth = numberValue(activeObject.width * activeObject.scaleX)
   const scaledHeight = numberValue(activeObject.height * activeObject.scaleY)
+  const hasFillGradient = activeObject.fill?.type === 'linear'
   const selectedWarp =
     WARP_OPTIONS.find(([value]) => value === (activeObject.warpType || 'none')) ||
     WARP_OPTIONS[0]
@@ -387,11 +396,74 @@ function PropertiesPanel({
             Text / fill color
             <input
               type="color"
-              value={activeObject.fill || '#111111'}
+              value={colorValue(activeObject.fill, '#ffffff')}
               onBlur={onCommit}
               onChange={(event) => onUpdate({ fill: event.target.value })}
             />
           </label>
+
+          <label className="checkbox-row">
+            <input
+              checked={hasFillGradient}
+              type="checkbox"
+              onChange={(event) => {
+                if (event.target.checked) {
+                  onUpdate({
+                    gradientFill: {
+                      end: gradientColor(activeObject.fill, 1, '#facc15'),
+                      start: colorValue(activeObject.fill, '#ffffff'),
+                    },
+                  })
+                } else {
+                  onUpdate({
+                    fill: gradientColor(activeObject.fill, 0, '#ffffff'),
+                  })
+                }
+                onCommit()
+              }}
+            />
+            Gradient
+          </label>
+
+          {hasFillGradient && (
+            <div className="property-group">
+              <span className="property-label">Fill gradient</span>
+              <div className="gradient-pickers">
+                <label>
+                  From
+                  <input
+                    type="color"
+                    value={gradientColor(activeObject.fill, 0, '#ffffff')}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({
+                        gradientFill: {
+                          end: gradientColor(activeObject.fill, 1, '#facc15'),
+                          start: event.target.value,
+                        },
+                      })
+                    }
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    type="color"
+                    value={gradientColor(activeObject.fill, 1, '#facc15')}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({
+                        gradientFill: {
+                          end: event.target.value,
+                          start: gradientColor(activeObject.fill, 0, '#ffffff'),
+                        },
+                      })
+                    }
+                  />
+                </label>
+              </div>
+            </div>
+          )}
 
           <label>
             Outline

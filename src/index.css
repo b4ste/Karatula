@@ -114,7 +114,7 @@
 }
 
 :root {
-  color: #e6eefc;
+  color: var(--site-text, #e6eefc);
   background: #071426;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
@@ -1051,6 +1051,30 @@ label {
 .settings-field {
   display: grid;
   gap: 8px;
+}
+
+.gradient-pickers {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.gradient-pickers input[type="color"] {
+  min-height: 34px;
+}
+
+.checkbox-row {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.checkbox-row input {
+  flex: 0 0 auto;
+  height: 16px;
+  min-height: 16px;
+  padding: 0;
+  width: 16px;
 }
 
 .modal-actions {

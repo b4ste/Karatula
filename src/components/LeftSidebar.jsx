@@ -92,12 +92,18 @@ function LeftSidebar({
   onAddShape,
   onAddText,
   onBackgroundChange,
+  onBackgroundGradientChange,
   onPickUpload,
   onSizeChange,
 }) {
   const [routeText, setRouteText] = useState(defaultRouteText)
   const [activePanel, setActivePanel] = useState('main')
   const [shapeSearch, setShapeSearch] = useState('')
+  const [useBackgroundGradient, setUseBackgroundGradient] = useState(false)
+  const [backgroundGradient, setBackgroundGradient] = useState({
+    end: '#4b5563',
+    start: '#111111',
+  })
 
   const updateCustomSize = (key, value) => {
     onSizeChange({
@@ -112,6 +118,21 @@ function LeftSidebar({
       .toLowerCase()
       .includes(shapeSearch.toLowerCase()),
   )
+
+  const updateBackgroundGradient = (key, value) => {
+    const nextGradient = { ...backgroundGradient, [key]: value }
+    setBackgroundGradient(nextGradient)
+    onBackgroundGradientChange(nextGradient.start, nextGradient.end)
+  }
+
+  const toggleBackgroundGradient = (checked) => {
+    setUseBackgroundGradient(checked)
+    if (checked) {
+      onBackgroundGradientChange(backgroundGradient.start, backgroundGradient.end)
+    } else {
+      onBackgroundChange(backgroundGradient.start)
+    }
+  }
 
   return (
     <aside className="sidebar left-sidebar sidebar-slider">
@@ -195,7 +216,10 @@ function LeftSidebar({
                   key={color}
                   style={{ background: color }}
                   type="button"
-                  onClick={() => onBackgroundChange(color)}
+                  onClick={() => {
+                    setUseBackgroundGradient(false)
+                    onBackgroundChange(color)
+                  }}
                 />
               ))}
               <label className="color-picker">
@@ -203,10 +227,47 @@ function LeftSidebar({
                 <input
                   type="color"
                   defaultValue="#111111"
-                  onChange={(event) => onBackgroundChange(event.target.value)}
+                  onChange={(event) => {
+                    setUseBackgroundGradient(false)
+                    onBackgroundChange(event.target.value)
+                  }}
                 />
               </label>
             </div>
+            <label className="checkbox-row">
+              <input
+                checked={useBackgroundGradient}
+                type="checkbox"
+                onChange={(event) =>
+                  toggleBackgroundGradient(event.target.checked)
+                }
+              />
+              Gradient
+            </label>
+            {useBackgroundGradient && (
+              <div className="gradient-pickers">
+                <label>
+                  From
+                  <input
+                    type="color"
+                    value={backgroundGradient.start}
+                    onChange={(event) =>
+                      updateBackgroundGradient('start', event.target.value)
+                    }
+                  />
+                </label>
+                <label>
+                  To
+                  <input
+                    type="color"
+                    value={backgroundGradient.end}
+                    onChange={(event) =>
+                      updateBackgroundGradient('end', event.target.value)
+                    }
+                  />
+                </label>
+              </div>
+            )}
           </section>
         </div>
 
