@@ -108,8 +108,8 @@ function LeftSidebar({
   const updateCustomSize = (key, value) => {
     onSizeChange({
       type: 'custom',
-      widthCm: key === 'widthCm' ? Number(value) : customSize.widthCm,
-      heightCm: key === 'heightCm' ? Number(value) : customSize.heightCm,
+      widthPx: key === 'widthPx' ? Number(value) : customSize.widthPx,
+      heightPx: key === 'heightPx' ? Number(value) : customSize.heightPx,
     })
   }
 
@@ -142,24 +142,24 @@ function LeftSidebar({
             <h2>Size</h2>
             <div className="custom-size">
               <label>
-                W cm
+                W px
                 <input
                   min="20"
                   type="number"
-                  value={customSize.widthCm}
+                  value={customSize.widthPx}
                   onChange={(event) =>
-                    updateCustomSize('widthCm', event.target.value)
+                    updateCustomSize('widthPx', event.target.value)
                   }
                 />
               </label>
               <label>
-                H cm
+                H px
                 <input
                   min="10"
                   type="number"
-                  value={customSize.heightCm}
+                  value={customSize.heightPx}
                   onChange={(event) =>
-                    updateCustomSize('heightCm', event.target.value)
+                    updateCustomSize('heightPx', event.target.value)
                   }
                 />
               </label>

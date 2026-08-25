@@ -11,7 +11,7 @@ import {
   Textbox,
   Triangle,
 } from 'fabric'
-import { Image, Square, Type } from 'lucide-react'
+import { Image, Lock, Square, Type, Unlock } from 'lucide-react'
 import EditorCanvas from './components/EditorCanvas'
 import ExportPanel from './components/ExportPanel'
 import LeftSidebar from './components/LeftSidebar'
@@ -22,7 +22,20 @@ import { downloadPng, exportPdf, printCanvas } from './utils/exportUtils'
 import { DEFAULT_FONT } from './utils/fonts'
 import './index.css'
 
-const FABRIC_CUSTOM_PROPS = ['curveAmount', 'warpType', 'warpAmount']
+const FABRIC_CUSTOM_PROPS = [
+  'curveAmount',
+  'editable',
+  'hasControls',
+  'isLocked',
+  'lockMovementX',
+  'lockMovementY',
+  'lockRotation',
+  'lockScalingFlip',
+  'lockScalingX',
+  'lockScalingY',
+  'warpType',
+  'warpAmount',
+]
 const DEFAULT_SITE_BACKGROUND = '#071426'
 const siteBackgrounds = [
   '#071426',
@@ -36,8 +49,8 @@ const siteBackgrounds = [
 
 const initialSize = {
   type: 'fixed',
-  widthCm: 100,
-  heightCm: 30,
+  widthPx: 100,
+  heightPx: 30,
 }
 
 function polygonPoints(sides, radius) {
@@ -61,6 +74,19 @@ function starPoints(points, outerRadius, innerRadius) {
   })
 }
 
+function getRulerMarks(size, preferredStep) {
+  const end = Math.max(Number(size) || 0, 0)
+  const step = Math.max(preferredStep, 1)
+  const marks = []
+
+  for (let value = 0; value < end; value += step) {
+    marks.push(value)
+  }
+
+  if (!marks.includes(end)) marks.push(end)
+  return marks
+}
+
 function App() {
   const [canvas, setCanvas] = useState(null)
   const [signSize, setSignSize] = useState(initialSize)
@@ -71,6 +97,8 @@ function App() {
   const [isRestoring, setIsRestoring] = useState(false)
   const [message] = useState('By Baste')
   const [showSettings, setShowSettings] = useState(false)
+  const [contextMenu, setContextMenu] = useState(null)
+  const [showRulers, setShowRulers] = useState(false)
   const [siteBackground, setSiteBackground] = useState(DEFAULT_SITE_BACKGROUND)
   const fileInputRef = useRef(null)
   const clipboardRef = useRef([])
@@ -127,6 +155,21 @@ function App() {
     if (historyIndex < history.length - 1) restoreSnapshot(historyIndex + 1)
   }, [historyIndex, history.length, restoreSnapshot])
 
+  const applyLockState = useCallback((object, isLocked) => {
+    object.set({
+      editable: typeof object.text === 'string' ? !isLocked : object.editable,
+      hasControls: !isLocked,
+      isLocked,
+      lockMovementX: isLocked,
+      lockMovementY: isLocked,
+      lockRotation: isLocked,
+      lockScalingFlip: isLocked,
+      lockScalingX: isLocked,
+      lockScalingY: isLocked,
+    })
+    object.setCoords()
+  }, [])
+
   const copySelection = useCallback(async () => {
     if (!canvas) return
 
@@ -174,6 +217,21 @@ function App() {
     await pasteSelection()
   }, [copySelection, pasteSelection])
 
+  const toggleLockSelection = useCallback(() => {
+    if (!canvas) return
+
+    const selected = canvas.getActiveObjects()
+    const targets = selected.length ? selected : contextMenu?.object ? [contextMenu.object] : []
+    if (!targets.length) return
+
+    const shouldLock = targets.some((object) => !object.isLocked)
+    targets.forEach((object) => applyLockState(object, shouldLock))
+    canvas.requestRenderAll()
+    setActiveObjectVersion((version) => version + 1)
+    setContextMenu(null)
+    pushHistory(canvas)
+  }, [applyLockState, canvas, contextMenu, pushHistory])
+
   useEffect(() => {
     if (!canvas) return
 
@@ -182,6 +240,29 @@ function App() {
       syncSelection()
       pushHistory(canvas)
     }
+    const preventContextMenu = (event) => event.preventDefault()
+    const handleMouseDown = (options) => {
+      const event = options.e
+
+      if (event.button === 2) {
+        event.preventDefault()
+
+        if (options.target) {
+          canvas.setActiveObject(options.target)
+          setActiveObject(options.target)
+          setContextMenu({
+            object: options.target,
+            x: event.clientX,
+            y: event.clientY,
+          })
+        } else {
+          setContextMenu(null)
+        }
+        return
+      }
+
+      setContextMenu(null)
+    }
 
     canvas.on('selection:created', syncSelection)
     canvas.on('selection:updated', syncSelection)
@@ -189,6 +270,8 @@ function App() {
     canvas.on('object:added', afterChange)
     canvas.on('object:modified', afterChange)
     canvas.on('object:removed', afterChange)
+    canvas.on('mouse:down', handleMouseDown)
+    canvas.upperCanvasEl.addEventListener('contextmenu', preventContextMenu)
 
     if (historyRef.current.history.length === 0) pushHistory(canvas)
 
@@ -199,6 +282,8 @@ function App() {
       canvas.off('object:added', afterChange)
       canvas.off('object:modified', afterChange)
       canvas.off('object:removed', afterChange)
+      canvas.off('mouse:down', handleMouseDown)
+      canvas.upperCanvasEl.removeEventListener('contextmenu', preventContextMenu)
     }
   }, [canvas, pushHistory])
 
@@ -212,6 +297,10 @@ function App() {
         target.isContentEditable
 
       if (editingField) return
+
+      if (event.key === 'Escape') {
+        setContextMenu(null)
+      }
 
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
         event.preventDefault()
@@ -242,9 +331,10 @@ function App() {
         if (canvas.getActiveObject()?.isEditing) return
 
         const selected = canvas.getActiveObjects()
-        if (selected.length) {
+        const removable = selected.filter((object) => !object.isLocked)
+        if (removable.length) {
           event.preventDefault()
-          selected.forEach((object) => canvas.remove(object))
+          removable.forEach((object) => canvas.remove(object))
           canvas.discardActiveObject()
           canvas.requestRenderAll()
         }
@@ -682,6 +772,8 @@ function App() {
 
   const updateActiveObject = async (updates) => {
     if (!canvas || !activeObject) return
+    if (activeObject.isLocked) return
+
     let targetObject = activeObject
 
     if (
@@ -741,12 +833,14 @@ function App() {
 
   const commitActiveObject = () => {
     if (!canvas) return
+    if (canvas.getActiveObject()?.isLocked) return
     canvas.getActiveObject()?.setCoords()
     pushHistory(canvas)
   }
 
   const changeLayer = (action) => {
     if (!canvas || !activeObject) return
+    if (activeObject.isLocked) return
 
     const layerActions = {
       backward: () => canvas.sendObjectBackwards(activeObject),
@@ -764,12 +858,19 @@ function App() {
 
   const deleteActiveObject = () => {
     if (!canvas) return
-    canvas.getActiveObjects().forEach((object) => canvas.remove(object))
+    canvas
+      .getActiveObjects()
+      .filter((object) => !object.isLocked)
+      .forEach((object) => canvas.remove(object))
     canvas.discardActiveObject()
     canvas.requestRenderAll()
   }
 
   const selectedPixels = getCanvasPixels(signSize)
+  const rulerWidth = Math.max(Number(signSize.widthPx) || 0, 1)
+  const rulerHeight = Math.max(Number(signSize.heightPx) || 0, 1)
+  const horizontalRulerMarks = getRulerMarks(signSize.widthPx, 20)
+  const verticalRulerMarks = getRulerMarks(signSize.heightPx, 10)
 
   return (
     <main
@@ -806,16 +907,52 @@ function App() {
               <h1>{getSignLabel(signSize)}</h1>
             </div>
             <span>
-              {signSize.widthCm}cm x {signSize.heightCm}cm
+              {signSize.widthPx}px x {signSize.heightPx}px
             </span>
           </div>
 
-          <div className="canvas-stage">
-            <EditorCanvas
-              height={selectedPixels.height}
-              onCanvasReady={setCanvas}
-              width={selectedPixels.width}
-            />
+          <div className={`canvas-stage ${showRulers ? 'has-rulers' : ''}`}>
+            <div
+              className="ruler-wrap"
+              style={{
+                '--ruler-height': `${selectedPixels.height}px`,
+                '--ruler-width': `${selectedPixels.width}px`,
+              }}
+            >
+              {showRulers && (
+                <>
+                  <div className="ruler ruler-horizontal" aria-hidden="true">
+                    {horizontalRulerMarks.map((mark) => (
+                      <span
+                        key={mark}
+                        style={{
+                          left: `${(mark / rulerWidth) * 100}%`,
+                        }}
+                      >
+                        {mark}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="ruler ruler-vertical" aria-hidden="true">
+                    {verticalRulerMarks.map((mark) => (
+                      <span
+                        key={mark}
+                        style={{
+                          top: `${(mark / rulerHeight) * 100}%`,
+                        }}
+                      >
+                        {mark}
+                      </span>
+                    ))}
+                  </div>
+                </>
+              )}
+              <EditorCanvas
+                height={selectedPixels.height}
+                onCanvasReady={setCanvas}
+                width={selectedPixels.width}
+              />
+            </div>
           </div>
         </section>
 
@@ -857,6 +994,25 @@ function App() {
         </button>
       </div>
 
+      {contextMenu && (
+        <div
+          className="canvas-context-menu"
+          style={{
+            left: contextMenu.x,
+            top: contextMenu.y,
+          }}
+        >
+          <button type="button" onClick={toggleLockSelection}>
+            {contextMenu.object.isLocked ? (
+              <Unlock size={16} />
+            ) : (
+              <Lock size={16} />
+            )}
+            {contextMenu.object.isLocked ? 'Unlock object' : 'Lock object'}
+          </button>
+        </div>
+      )}
+
       {showSettings && (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -866,6 +1022,15 @@ function App() {
             role="dialog"
           >
             <h2 id="settings-title">Settings</h2>
+            <label className="checkbox-row">
+              <input
+                checked={showRulers}
+                type="checkbox"
+                onChange={(event) => setShowRulers(event.target.checked)}
+              />
+              Show ruler
+            </label>
+
             <div className="settings-field">
               <span className="property-label">Site background</span>
               <div className="swatches">

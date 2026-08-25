@@ -13,12 +13,12 @@ export function downloadPng(canvas, signSize) {
 export function exportPdf(canvas, signSize) {
   const image = canvasToPrintDataUrl(canvas)
   const pdf = new jsPDF({
-    orientation: signSize.widthCm >= signSize.heightCm ? 'landscape' : 'portrait',
-    unit: 'cm',
-    format: [signSize.widthCm, signSize.heightCm],
+    orientation: signSize.widthPx >= signSize.heightPx ? 'landscape' : 'portrait',
+    unit: 'px',
+    format: [signSize.widthPx, signSize.heightPx],
   })
 
-  pdf.addImage(image, 'PNG', 0, 0, signSize.widthCm, signSize.heightCm)
+  pdf.addImage(image, 'PNG', 0, 0, signSize.widthPx, signSize.heightPx)
   pdf.save(filenameFor(signSize, 'pdf'))
 }
 
@@ -35,7 +35,7 @@ export function printCanvas(canvas, signSize) {
         <title>Print ${getSignLabel(signSize)}</title>
         <style>
           @page {
-            size: ${signSize.widthCm}cm ${signSize.heightCm}cm;
+            size: ${signSize.widthPx}px ${signSize.heightPx}px;
             margin: 0;
           }
 
@@ -52,8 +52,8 @@ export function printCanvas(canvas, signSize) {
           }
 
           img {
-            width: ${signSize.widthCm}cm;
-            height: ${signSize.heightCm}cm;
+            width: ${signSize.widthPx}px;
+            height: ${signSize.heightPx}px;
             object-fit: contain;
             display: block;
           }

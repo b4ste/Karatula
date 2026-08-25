@@ -2,27 +2,27 @@ export const SIGN_PRESETS = {
   front: {
     id: 'front',
     name: 'Front Sign',
-    widthCm: 120,
-    heightCm: 30,
+    widthPx: 120,
+    heightPx: 30,
   },
   side: {
     id: 'side',
     name: 'Side Sign',
-    widthCm: 150,
-    heightCm: 30,
+    widthPx: 150,
+    heightPx: 30,
   },
   rear: {
     id: 'rear',
     name: 'Rear Sign',
-    widthCm: 100,
-    heightCm: 30,
+    widthPx: 100,
+    heightPx: 30,
   },
 }
 
 export function getCanvasPixels(signSize) {
-  const widthCm = Math.max(Number(signSize.widthCm) || 120, 20)
-  const heightCm = Math.max(Number(signSize.heightCm) || 30, 10)
-  const aspectRatio = widthCm / heightCm
+  const widthPx = Math.max(Number(signSize.widthPx) || 120, 20)
+  const heightPx = Math.max(Number(signSize.heightPx) || 30, 10)
+  const aspectRatio = widthPx / heightPx
   const width = aspectRatio >= 4.5 ? 940 : 860
 
   return {

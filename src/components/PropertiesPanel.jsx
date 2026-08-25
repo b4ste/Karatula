@@ -132,7 +132,10 @@ function PropertiesPanel({
     <aside className="sidebar properties-panel">
       <section>
         <h2>Object properties</h2>
-        <div className="property-stack">
+        {activeObject.isLocked && (
+          <p className="locked-note">Locked. Right-click the object to unlock it.</p>
+        )}
+        <fieldset className="property-stack" disabled={activeObject.isLocked}>
           {isText && (
             <>
               <label>
@@ -618,7 +621,7 @@ function PropertiesPanel({
             <Trash2 size={18} />
             Delete object
           </button>
-        </div>
+        </fieldset>
       </section>
 
       {showCurveResetModal && (
