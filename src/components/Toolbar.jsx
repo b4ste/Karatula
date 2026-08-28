@@ -3,6 +3,7 @@ import {
   FileDown,
   Printer,
   Redo2,
+  RotateCcw,
   Settings,
   Undo2,
 } from 'lucide-react'
@@ -15,6 +16,7 @@ function Toolbar({
   onExportPng,
   onPrint,
   onRedo,
+  onReset,
   onSettings,
   onUndo,
 }) {
@@ -69,6 +71,14 @@ function Toolbar({
           onClick={onPrint}
         >
           <Printer size={18} />
+        </button>
+        <button
+          aria-label="Reset board"
+          type="button"
+          title="Reset board"
+          onClick={onReset}
+        >
+          <RotateCcw size={18} />
         </button>
         <button
           aria-label="Settings"

@@ -8,6 +8,7 @@ import {
   ArrowUp,
   ArrowUpToLine,
   Bold,
+  Eraser,
   Italic,
   RotateCcw,
   RefreshCw,
@@ -27,6 +28,13 @@ function gradientColor(value, index, fallback) {
   return value?.colorStops?.[index]?.color || fallback
 }
 
+function gradientAngle(activeObject) {
+  return numberValue(
+    activeObject.gradientAngle ?? activeObject.fill?.gradientAngle,
+    45,
+  )
+}
+
 const WARP_OPTIONS = [
   ['none', 'None'],
   ['arc', 'Arc'],
@@ -44,6 +52,12 @@ const WARP_OPTIONS = [
   ['inflate', 'Inflate'],
   ['squeeze', 'Squeeze'],
   ['twist', 'Twist'],
+]
+
+const TEXTURE_OPTIONS = [
+  ['none', 'None'],
+  ['blue-metal', 'Blue metal'],
+  ['brick', 'Brick'],
 ]
 
 function getWarpPreviewPath(type) {
@@ -100,6 +114,7 @@ function PropertiesPanel({
   const [showWarpResetModal, setShowWarpResetModal] = useState(false)
   const [showWarpPicker, setShowWarpPicker] = useState(false)
   const isText = typeof activeObject?.text === 'string'
+  const isImage = activeObject?.type === 'image'
 
   if (!activeObject) {
     return (
@@ -261,12 +276,30 @@ function PropertiesPanel({
                 <input
                   min="80"
                   type="number"
-                  value={numberValue(activeObject.width, 560)}
+                  value={numberValue(activeObject.width, 160)}
                   onBlur={onCommit}
                   onChange={(event) =>
                     onUpdate({ wrapWidth: Number(event.target.value) })
                   }
                 />
+              </label>
+
+              <label>
+                Letter texture
+                <select
+                  value={activeObject.textureName || 'none'}
+                  onBlur={onCommit}
+                  onChange={(event) => {
+                    onUpdate({ textureFill: event.target.value })
+                    onCommit()
+                  }}
+                >
+                  {TEXTURE_OPTIONS.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               <div className="property-group">
@@ -395,120 +428,216 @@ function PropertiesPanel({
             </>
           )}
 
-          <label>
-            Text / fill color
-            <input
-              type="color"
-              value={colorValue(activeObject.fill, '#ffffff')}
-              onBlur={onCommit}
-              onChange={(event) => onUpdate({ fill: event.target.value })}
-            />
-          </label>
-
-          <label className="checkbox-row">
-            <input
-              checked={hasFillGradient}
-              type="checkbox"
-              onChange={(event) => {
-                if (event.target.checked) {
+          {isImage && (
+            <div className="property-group">
+              <span className="property-label">Background remover</span>
+              <label>
+                White tolerance
+                <input
+                  max="120"
+                  min="0"
+                  step="5"
+                  type="range"
+                  value={numberValue(activeObject.backgroundRemovalTolerance, 35)}
+                  onChange={(event) =>
+                    onUpdate({
+                      backgroundRemovalTolerance: Number(event.target.value),
+                    })
+                  }
+                />
+              </label>
+              <label>
+                Edge soften
+                <input
+                  max="80"
+                  min="0"
+                  step="5"
+                  type="range"
+                  value={numberValue(activeObject.backgroundRemovalSoftness, 30)}
+                  onChange={(event) =>
+                    onUpdate({
+                      backgroundRemovalSoftness: Number(event.target.value),
+                    })
+                  }
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => {
                   onUpdate({
-                    gradientFill: {
-                      end: gradientColor(activeObject.fill, 1, '#facc15'),
-                      start: colorValue(activeObject.fill, '#ffffff'),
+                    removeWhiteBackground: {
+                      softness: activeObject.backgroundRemovalSoftness ?? 30,
+                      tolerance: activeObject.backgroundRemovalTolerance ?? 35,
                     },
                   })
-                } else {
-                  onUpdate({
-                    fill: gradientColor(activeObject.fill, 0, '#ffffff'),
-                  })
-                }
-                onCommit()
-              }}
-            />
-            Gradient
-          </label>
-
-          {hasFillGradient && (
-            <div className="property-group">
-              <span className="property-label">Fill gradient</span>
-              <div className="gradient-pickers">
-                <label>
-                  From
-                  <input
-                    type="color"
-                    value={gradientColor(activeObject.fill, 0, '#ffffff')}
-                    onBlur={onCommit}
-                    onChange={(event) =>
-                      onUpdate({
-                        gradientFill: {
-                          end: gradientColor(activeObject.fill, 1, '#facc15'),
-                          start: event.target.value,
-                        },
-                      })
-                    }
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="color"
-                    value={gradientColor(activeObject.fill, 1, '#facc15')}
-                    onBlur={onCommit}
-                    onChange={(event) =>
-                      onUpdate({
-                        gradientFill: {
-                          end: event.target.value,
-                          start: gradientColor(activeObject.fill, 0, '#ffffff'),
-                        },
-                      })
-                    }
-                  />
-                </label>
-              </div>
+                  onCommit()
+                }}
+              >
+                <Eraser size={18} />
+                Erase white bg
+              </button>
             </div>
           )}
 
-          <label>
-            Outline
-            <input
-              min="0"
-              type="number"
-              value={numberValue(activeObject.strokeWidth, 0)}
-              onBlur={onCommit}
-              onChange={(event) =>
-                onUpdate({ strokeWidth: Number(event.target.value) })
-              }
-            />
-          </label>
+          {!isImage && (
+            <>
+              <label>
+                Text / fill color
+                <input
+                  type="color"
+                  value={colorValue(activeObject.fill, '#ffffff')}
+                  onBlur={onCommit}
+                  onChange={(event) => onUpdate({ fill: event.target.value })}
+                />
+              </label>
 
-          <div className="inline-property">
-            <label>
-              Outline color
-              <input
-                type="color"
-                value={activeObject.stroke || '#111111'}
-                onBlur={onCommit}
-                onChange={(event) => onUpdate({ stroke: event.target.value })}
-              />
-            </label>
-            <button
-              aria-label="Sync outline color with fill color"
-              className="icon-button"
-              title="Sync outline color with fill color"
-              type="button"
-              onClick={() => {
-                onUpdate({
-                  stroke:
-                    typeof activeObject.fill === 'string'
-                      ? activeObject.fill
-                      : '#ffffff',
-                })
-                onCommit()
-              }}
-            >
-              <RefreshCw size={16} />
-            </button>
-          </div>
+              <label className="checkbox-row">
+                <input
+                  checked={hasFillGradient}
+                  type="checkbox"
+                  onChange={(event) => {
+                    if (event.target.checked) {
+                      onUpdate({
+                        gradientFill: {
+                          angle: gradientAngle(activeObject),
+                          end: gradientColor(activeObject.fill, 1, '#facc15'),
+                          start: colorValue(activeObject.fill, '#ffffff'),
+                        },
+                      })
+                    } else {
+                      onUpdate({
+                        fill: gradientColor(activeObject.fill, 0, '#ffffff'),
+                      })
+                    }
+                    onCommit()
+                  }}
+                />
+                Gradient
+              </label>
+
+              {hasFillGradient && (
+                <div className="property-group">
+                  <span className="property-label">Fill gradient</span>
+                  <div className="gradient-pickers">
+                    <label>
+                      From
+                      <input
+                        type="color"
+                        value={gradientColor(activeObject.fill, 0, '#ffffff')}
+                        onBlur={onCommit}
+                        onChange={(event) =>
+                          onUpdate({
+                            gradientFill: {
+                              angle: gradientAngle(activeObject),
+                              end: gradientColor(
+                                activeObject.fill,
+                                1,
+                                '#facc15',
+                              ),
+                              start: event.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      To
+                      <input
+                        type="color"
+                        value={gradientColor(activeObject.fill, 1, '#facc15')}
+                        onBlur={onCommit}
+                        onChange={(event) =>
+                          onUpdate({
+                            gradientFill: {
+                              angle: gradientAngle(activeObject),
+                              end: event.target.value,
+                              start: gradientColor(
+                                activeObject.fill,
+                                0,
+                                '#ffffff',
+                              ),
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+                  <label>
+                    Angle
+                    <input
+                      max="360"
+                      min="0"
+                      step="5"
+                      type="range"
+                      value={gradientAngle(activeObject)}
+                      onBlur={onCommit}
+                      onChange={(event) =>
+                        onUpdate({
+                          gradientFill: {
+                            angle: Number(event.target.value),
+                            end: gradientColor(
+                              activeObject.fill,
+                              1,
+                              '#facc15',
+                            ),
+                            start: gradientColor(
+                              activeObject.fill,
+                              0,
+                              '#ffffff',
+                            ),
+                          },
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+              )}
+
+              <label>
+                Outline
+                <input
+                  min="0"
+                  type="number"
+                  value={numberValue(activeObject.strokeWidth, 0)}
+                  onBlur={onCommit}
+                  onChange={(event) =>
+                    onUpdate({ strokeWidth: Number(event.target.value) })
+                  }
+                />
+              </label>
+
+              <div className="inline-property">
+                <label>
+                  Outline color
+                  <input
+                    type="color"
+                    value={activeObject.stroke || '#111111'}
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({ stroke: event.target.value })
+                    }
+                  />
+                </label>
+                <button
+                  aria-label="Sync outline color with fill color"
+                  className="icon-button"
+                  title="Sync outline color with fill color"
+                  type="button"
+                  onClick={() => {
+                    onUpdate({
+                      stroke:
+                        typeof activeObject.fill === 'string'
+                          ? activeObject.fill
+                          : '#ffffff',
+                    })
+                    onCommit()
+                  }}
+                >
+                  <RefreshCw size={16} />
+                </button>
+              </div>
+            </>
+          )}
 
           <div className="property-group">
             <h3>Layer</h3>

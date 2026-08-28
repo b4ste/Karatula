@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 
 const backgrounds = ['#111111', '#ffffff', '#dc2626', '#facc15', '#2563eb']
-const defaultRouteText = 'NAIC -> PITX'
+const defaultRouteText = 'Text'
 
 const shapeSections = [
   {
@@ -101,6 +101,7 @@ function LeftSidebar({
   const [shapeSearch, setShapeSearch] = useState('')
   const [useBackgroundGradient, setUseBackgroundGradient] = useState(false)
   const [backgroundGradient, setBackgroundGradient] = useState({
+    angle: 0,
     end: '#4b5563',
     start: '#111111',
   })
@@ -122,13 +123,13 @@ function LeftSidebar({
   const updateBackgroundGradient = (key, value) => {
     const nextGradient = { ...backgroundGradient, [key]: value }
     setBackgroundGradient(nextGradient)
-    onBackgroundGradientChange(nextGradient.start, nextGradient.end)
+    onBackgroundGradientChange(nextGradient)
   }
 
   const toggleBackgroundGradient = (checked) => {
     setUseBackgroundGradient(checked)
     if (checked) {
-      onBackgroundGradientChange(backgroundGradient.start, backgroundGradient.end)
+      onBackgroundGradientChange(backgroundGradient)
     } else {
       onBackgroundChange(backgroundGradient.start)
     }
@@ -245,24 +246,42 @@ function LeftSidebar({
               Gradient
             </label>
             {useBackgroundGradient && (
-              <div className="gradient-pickers">
+              <div className="property-group">
+                <div className="gradient-pickers">
+                  <label>
+                    From
+                    <input
+                      type="color"
+                      value={backgroundGradient.start}
+                      onChange={(event) =>
+                        updateBackgroundGradient('start', event.target.value)
+                      }
+                    />
+                  </label>
+                  <label>
+                    To
+                    <input
+                      type="color"
+                      value={backgroundGradient.end}
+                      onChange={(event) =>
+                        updateBackgroundGradient('end', event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
                 <label>
-                  From
+                  Angle
                   <input
-                    type="color"
-                    value={backgroundGradient.start}
+                    max="360"
+                    min="0"
+                    step="5"
+                    type="range"
+                    value={backgroundGradient.angle}
                     onChange={(event) =>
-                      updateBackgroundGradient('start', event.target.value)
-                    }
-                  />
-                </label>
-                <label>
-                  To
-                  <input
-                    type="color"
-                    value={backgroundGradient.end}
-                    onChange={(event) =>
-                      updateBackgroundGradient('end', event.target.value)
+                      updateBackgroundGradient(
+                        'angle',
+                        Number(event.target.value),
+                      )
                     }
                   />
                 </label>
