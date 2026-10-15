@@ -325,6 +325,14 @@ h2 {
   width: 44px;
 }
 
+.topbar-actions .premade-assets-button,
+.topbar-actions .save-design-button {
+  aspect-ratio: auto;
+  padding: 0 12px;
+  white-space: nowrap;
+  width: auto;
+}
+
 .editor-shell {
   display: grid;
   flex: 1;
@@ -1200,9 +1208,24 @@ fieldset.property-stack:disabled {
   max-width: 320px;
 }
 
+.premade-assets-modal {
+  max-width: 500px;
+}
+
+.premade-assets-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.premade-asset-card { align-items: stretch; display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 8px; text-align: left; }
+.premade-asset-preview { aspect-ratio: 860 / 323; background: #fafafa; border-radius: 4px; display: block; overflow: hidden; width: 100%; }
+.premade-asset-preview img { display: block; height: 100%; object-fit: contain; width: 100%; }
+.premade-asset-name { color: #e6eefc; font-size: 13px; }
+.premade-asset-card small { color: #9fb6d6; font-size: 10px; font-weight: 400; }
+
 .settings-field {
   display: grid;
   gap: 8px;
+}
+
+.settings-field > button {
+  justify-self: start;
 }
 
 .switch-row {
@@ -1407,6 +1430,7 @@ fieldset.property-stack:disabled {
 .layers-footer button { height: 25px; min-height: 25px; padding: 3px; width: 25px; }
 .arrange-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
 .arrange-grid button { font-size: 11px; padding: 6px 3px; text-transform: capitalize; }
+.arrange-grid .fit-board-button { grid-column: 1 / -1; }
 .topbar-actions { flex-wrap: wrap; }
 @media (max-width: 940px) { .inspector { display: block; overflow: visible; } .inspector-details { overflow: visible; } .editor-shell { height: auto; overflow: visible; } }
 

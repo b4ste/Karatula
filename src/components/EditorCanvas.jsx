@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { Canvas } from 'fabric'
+import { applyRotateCursor } from '../utils/rotateCursor'
 
 function EditorCanvas({ width, height, onCanvasReady }) {
   const canvasElementRef = useRef(null)
@@ -10,6 +11,16 @@ function EditorCanvas({ width, height, onCanvasReady }) {
       backgroundColor: '#111111',
       preserveObjectStacking: true,
       selection: true,
+    })
+
+    canvas.on('object:added', ({ target }) => applyRotateCursor(target))
+    canvas.on('selection:created', ({ selected }) => {
+      selected?.forEach(applyRotateCursor)
+      applyRotateCursor(canvas.getActiveObject())
+    })
+    canvas.on('selection:updated', ({ selected }) => {
+      selected?.forEach(applyRotateCursor)
+      applyRotateCursor(canvas.getActiveObject())
     })
 
     fabricCanvasRef.current = canvas

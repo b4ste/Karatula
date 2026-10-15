@@ -25,6 +25,7 @@ import { Image, Lock, Square, Type, Unlock, ZoomIn, ZoomOut } from 'lucide-react
 import DrawingTools from './components/DrawingTools'
 import ImageTools from './components/ImageTools'
 import LayersPanel from './components/LayersPanel'
+import PremadeAssets from './components/PremadeAssets'
 import { downloadProject, validateProject } from './utils/project'
 import EditorCanvas from './components/EditorCanvas'
 import ExportPanel from './components/ExportPanel'
@@ -36,7 +37,10 @@ import brickTexture from './assets/textures/brick1.jpg'
 import { getCanvasPixels, getSignLabel } from './utils/dimensions'
 import { downloadJpeg, downloadPng, exportPdf, printCanvas } from './utils/exportUtils'
 import { setImageMarqueeMask } from './utils/imageEditing'
+import { createDivisoriaDesign, DIVISORIA_BACKGROUND, loadDivisoriaFonts } from './utils/premadeAssets'
 import { getRulerScale } from './utils/ruler'
+import { fitRectangleToBoard } from './utils/fitToBoard'
+import { applyRotateCursor } from './utils/rotateCursor'
 import { CUSTOM_FONTS, DEFAULT_FONT } from './utils/fonts'
 import './index.css'
 
@@ -399,6 +403,7 @@ function applyLinePointControls(object) {
     controls: enabled ? controls : defaultControls,
     objectCaching: false,
   })
+  applyRotateCursor(object)
   return object
 }
 
@@ -625,6 +630,7 @@ function App() {
   const projectInputRef = useRef(null)
   const transactionRef = useRef(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showPremadeAssets, setShowPremadeAssets] = useState(false)
   const [showResetModal, setShowResetModal] = useState(false)
   const [contextMenu, setContextMenu] = useState(null)
   const [alignmentAssist, setAlignmentAssist] = useState(
@@ -1229,7 +1235,13 @@ function App() {
     }
 
     if (shape === 'rectangle') {
-      centerObject(new Rect({ width: 190, height: 90, ...common }))
+      centerObject(new Rect({
+        width: 190,
+        height: 90,
+        ...common,
+        fill: 'transparent',
+        strokeWidth: 8,
+      }))
     }
 
     if (shape === 'half-rectangle') {
@@ -1965,6 +1977,8 @@ function App() {
     canvas.discardActiveObject()
     canvas.getObjects().forEach((object) => canvas.remove(object))
     canvas.set({ backgroundColor: '#111111' })
+    canvas.setDimensions(getCanvasPixels(initialSize))
+    setSignSize({ ...initialSize })
     canvas.requestRenderAll()
     setActiveObject(null)
     setActiveObjectVersion((version) => version + 1)
@@ -1980,6 +1994,31 @@ function App() {
     setActiveObject(canvas.getActiveObject() || null)
     setActiveObjectVersion((version) => version + 1)
     pushHistory(canvas)
+  }
+
+  const useDivisoriaDesign = async () => {
+    if (!canvas || historyRef.current.isRestoring) return
+    try {
+      await loadDivisoriaFonts()
+      const objects = await createDivisoriaDesign(canvas.getWidth(), canvas.getHeight())
+      transactionRef.current = true
+      try {
+        canvas.discardActiveObject()
+        canvas.remove(...canvas.getObjects())
+        canvas.set('backgroundColor', DIVISORIA_BACKGROUND)
+        canvas.add(...objects)
+      } finally {
+        transactionRef.current = false
+      }
+      canvas.requestRenderAll()
+      setActiveObject(null)
+      setActiveObjectVersion((version) => version + 1)
+      pushHistory(canvas)
+      setShowPremadeAssets(false)
+      setMessage('Divisoria City Hall design added')
+    } catch {
+      setMessage('Could not load the premade design.')
+    }
   }
 
   const transformSelection = (action) => {
@@ -1999,6 +2038,12 @@ function App() {
       } else object.set(action, !object[action])
       object.setCoords()
     })
+  }
+
+  const fitSelectedRectangleToBoard = () => {
+    const object = canvas?.getActiveObject()
+    if (object?.type?.toLowerCase() !== 'rect' || object.isLocked) return
+    editLayers(() => fitRectangleToBoard(object, canvas.getWidth(), canvas.getHeight()))
   }
 
   const saveProjectFile = () => {
@@ -2178,9 +2223,9 @@ function App() {
         onOpenProject={() => projectInputRef.current?.click()}
         onExportPdf={() => runExport(exportPdf)}
         onExportPng={() => runExport(downloadPng)}
+        onPremadeAssets={() => setShowPremadeAssets(true)}
         onPrint={() => runExport(printCanvas)}
         onRedo={redo}
-        onReset={() => setShowResetModal(true)}
         onSettings={() => setShowSettings(true)}
         onUndo={undo}
       />
@@ -2322,6 +2367,7 @@ function App() {
             </label>}
             <div className="arrange-grid">
               {['left', 'center', 'right', 'top', 'middle', 'bottom'].map((action) => <button key={action} type="button" disabled={canvas.getActiveObjects().some((item) => item.isLocked)} onClick={() => transformSelection(action)}>{action}</button>)}
+              {activeObject.type?.toLowerCase() === 'rect' && <button className="fit-board-button" type="button" disabled={activeObject.isLocked} title="Align the rectangle border with all four board edges" onClick={fitSelectedRectangleToBoard}>Fit to board</button>}
               <button type="button" onClick={() => transformSelection('flipX')}>Flip horizontal</button>
               <button type="button" onClick={() => transformSelection('flipY')}>Flip vertical</button>
               <button type="button" onClick={duplicateSelection}>Duplicate</button>
@@ -2390,6 +2436,11 @@ function App() {
         </div>
       )}
 
+      {showPremadeAssets && <PremadeAssets
+        onClose={() => setShowPremadeAssets(false)}
+        onUseDivisoria={useDivisoriaDesign}
+      />}
+
       {showResetModal && (
         <div className="modal-backdrop" role="presentation">
           <div
@@ -2399,7 +2450,7 @@ function App() {
             role="dialog"
           >
             <h2 id="reset-board-title">Reset board?</h2>
-            <p>This will remove everything from the sign. Download your work before resetting.</p>
+            <p>This removes everything from the sign and restores its 1920 × 720 size. You can undo it afterward.</p>
             <div className="modal-actions">
               <button type="button" onClick={() => setShowResetModal(false)}>
                 Cancel
@@ -2465,16 +2516,17 @@ function App() {
                   />
                 </label>
               </div>
+              <button type="button" onClick={() => setSiteBackground(DEFAULT_SITE_BACKGROUND)}>
+                Reset background
+              </button>
             </div>
 
             <div className="modal-actions">
-              <button
-                type="button"
-                onClick={() => {
-                  setSiteBackground(DEFAULT_SITE_BACKGROUND)
-                }}
-              >
-                Reset
+              <button type="button" onClick={() => {
+                setShowSettings(false)
+                setShowResetModal(true)
+              }}>
+                Reset board
               </button>
               <button type="button" onClick={() => setShowSettings(false)}>
                 Close

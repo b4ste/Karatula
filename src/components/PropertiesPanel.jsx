@@ -136,6 +136,7 @@ function PropertiesPanel({
   const scaledWidth = numberValue(activeObject.width * activeObject.scaleX)
   const scaledHeight = numberValue(activeObject.height * activeObject.scaleY)
   const hasFillGradient = activeObject.fill?.type === 'linear'
+  const hasTransparentFill = activeObject.fill === 'transparent' || !activeObject.fill
   const maxCornerRoundness = Math.floor(
     Math.min(scaledWidth || 0, scaledHeight || 0) / 2,
   )
@@ -512,8 +513,31 @@ function PropertiesPanel({
 
           {!isImage && (
             <>
+              {isRectangle && (
+                <label className="checkbox-row">
+                  <input
+                    checked={hasTransparentFill}
+                    type="checkbox"
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        onUpdate({
+                          fill: 'transparent',
+                          stroke: activeObject.strokeWidth && activeObject.stroke
+                            ? activeObject.stroke
+                            : colorValue(activeObject.fill),
+                          strokeWidth: activeObject.strokeWidth || 8,
+                        })
+                      } else {
+                        onUpdate({ fill: '#ffffff' })
+                      }
+                      onCommit()
+                    }}
+                  />
+                  Transparent inside
+                </label>
+              )}
               <label>
-                Text / fill color
+                {isRectangle ? 'Fill color' : 'Text / fill color'}
                 <input
                   type="color"
                   value={colorValue(activeObject.fill, '#ffffff')}

@@ -6,6 +6,9 @@ import { getCanvasPixels } from '../src/utils/dimensions.js'
 import { canvasToPrintDataUrl } from '../src/utils/canvasUtils.js'
 import { getLayerDropIndex } from '../src/utils/layerOrder.js'
 import { getRulerScale } from '../src/utils/ruler.js'
+import { fitRectangleToBoard } from '../src/utils/fitToBoard.js'
+import { DIVISORIA_PREVIEW_SIZE, getDivisoriaLayout } from '../src/utils/premadeAssets.js'
+import divisoriaProject from '../src/assets/premade/divisoria-city-hall.json' with { type: 'json' }
 
 const project = { formatVersion: 1, signSize: { widthPx: 1920, heightPx: 720 }, canvas: { objects: [] } }
 
@@ -23,6 +26,48 @@ test('portrait and panoramic previews stay bounded and nonzero', () => {
     assert.ok(preview.width > 0 && preview.width <= 940)
     assert.ok(preview.height > 0 && preview.height <= 600)
   }
+})
+
+test('premade design uses the saved layers and scales uniformly without changing the board', () => {
+  const preview = getCanvasPixels(project.signSize)
+  assert.deepEqual(DIVISORIA_PREVIEW_SIZE, preview)
+  assert.deepEqual(getDivisoriaLayout(preview.width, preview.height), {
+    scale: 1,
+    offsetX: 0,
+    offsetY: 0,
+  })
+  const smaller = getDivisoriaLayout(430, 300)
+  assert.equal(smaller.scale, 0.5)
+  assert.equal(smaller.offsetX, 0)
+  assert.equal(smaller.offsetY, (300 - preview.height / 2) / 2)
+  assert.deepEqual(
+    divisoriaProject.canvas.objects.map(({ layerName }) => layerName),
+    ['Border', 'Light sign panel', 'Yellow accent', 'DIVISORIA', 'CITY HALL'],
+  )
+})
+
+test('fit to board aligns a rotated rectangle outline with every board edge', () => {
+  const rectangle = new Rect({
+    left: 100,
+    top: 60,
+    width: 250,
+    height: 100,
+    stroke: '#000000',
+    strokeWidth: 10,
+    angle: 18,
+    scaleX: 1.7,
+    scaleY: 1.4,
+  })
+
+  fitRectangleToBoard(rectangle, 1920, 720)
+
+  assert.deepEqual(rectangle.getBoundingRect(), {
+    left: 0,
+    top: 0,
+    width: 1920,
+    height: 720,
+  })
+  assert.equal(rectangle.strokeWidth, 10)
 })
 
 test('ruler labels stay spaced at the displayed canvas size', () => {

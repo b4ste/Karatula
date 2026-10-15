@@ -1,9 +1,10 @@
 import {
   Download,
   FileDown,
+  LayoutTemplate,
   Printer,
   Redo2,
-  RotateCcw,
+  Save,
   Settings,
   Undo2,
 } from 'lucide-react'
@@ -14,9 +15,10 @@ function Toolbar({
   message,
   onExportPdf,
   onExportPng,
+  onPremadeAssets,
   onPrint,
   onRedo,
-  onReset,
+  onSaveProject,
   onSettings,
   onUndo,
 }) {
@@ -30,6 +32,23 @@ function Toolbar({
       </div>
 
       <div className="topbar-actions">
+        <button
+          className="premade-assets-button"
+          type="button"
+          onClick={onPremadeAssets}
+        >
+          <LayoutTemplate size={18} />
+          Premade Assets
+        </button>
+        <button
+          className="save-design-button"
+          type="button"
+          title="Download editable design as JSON"
+          onClick={onSaveProject}
+        >
+          <Save size={18} />
+          Save Design
+        </button>
         <button
           aria-label="Undo"
           type="button"
@@ -71,14 +90,6 @@ function Toolbar({
           onClick={onPrint}
         >
           <Printer size={18} />
-        </button>
-        <button
-          aria-label="Reset board"
-          type="button"
-          title="Reset board"
-          onClick={onReset}
-        >
-          <RotateCcw size={18} />
         </button>
         <button
           aria-label="Settings"
