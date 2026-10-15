@@ -115,6 +115,12 @@ function PropertiesPanel({
   const [showWarpPicker, setShowWarpPicker] = useState(false)
   const isText = typeof activeObject?.text === 'string'
   const isImage = activeObject?.type === 'image'
+  const isLine = activeObject?.type?.toLowerCase() === 'line'
+  const isLineLike = isLine || activeObject?.arrowLine || activeObject?.curvedLine
+  const supportsLinePointEditing = Boolean(
+    activeObject?.arrowLine || activeObject?.curvedLine,
+  )
+  const isRectangle = activeObject?.type?.toLowerCase() === 'rect'
 
   if (!activeObject) {
     return (
@@ -130,12 +136,37 @@ function PropertiesPanel({
   const scaledWidth = numberValue(activeObject.width * activeObject.scaleX)
   const scaledHeight = numberValue(activeObject.height * activeObject.scaleY)
   const hasFillGradient = activeObject.fill?.type === 'linear'
+  const maxCornerRoundness = Math.floor(
+    Math.min(scaledWidth || 0, scaledHeight || 0) / 2,
+  )
+  const cornerRoundness = numberValue(
+    Math.min(
+      (activeObject.rx || 0) * (activeObject.scaleX || 1),
+      (activeObject.ry || 0) * (activeObject.scaleY || 1),
+    ),
+  )
   const selectedWarp =
     WARP_OPTIONS.find(([value]) => value === (activeObject.warpType || 'none')) ||
     WARP_OPTIONS[0]
 
   const setScaledSize = (key, value) => {
     const next = Math.max(Number(value), 1)
+    if (isRectangle) {
+      const updates = { [key]: next }
+      const radius = Math.min(
+        cornerRoundness,
+        (key === 'width' ? next : scaledWidth) / 2,
+        (key === 'height' ? next : scaledHeight) / 2,
+      )
+
+      updates.rx = radius
+      updates.ry = radius
+      updates.scaleX = 1
+      updates.scaleY = 1
+      onUpdate(updates)
+      return
+    }
+
     if (key === 'width') {
       onUpdate({ scaleX: next / activeObject.width })
     } else {
@@ -606,6 +637,27 @@ function PropertiesPanel({
                 />
               </label>
 
+              {isRectangle && (
+                <label>
+                  Corner roundness
+                  <input
+                    max={maxCornerRoundness}
+                    min="0"
+                    step="1"
+                    type="range"
+                    value={cornerRoundness}
+                    onBlur={onCommit}
+                    onChange={(event) => {
+                      const radius = Number(event.target.value)
+                      onUpdate({
+                        rx: radius / (activeObject.scaleX || 1),
+                        ry: radius / (activeObject.scaleY || 1),
+                      })
+                    }}
+                  />
+                </label>
+              )}
+
               <div className="inline-property">
                 <label>
                   Outline color
@@ -723,28 +775,62 @@ function PropertiesPanel({
             </label>
           </div>
 
-          <div className="two-column">
-            <label>
-              Width
-              <input
-                min="1"
-                type="number"
-                value={scaledWidth}
-                onBlur={onCommit}
-                onChange={(event) => setScaledSize('width', event.target.value)}
-              />
-            </label>
-            <label>
-              Height
-              <input
-                min="1"
-                type="number"
-                value={scaledHeight}
-                onBlur={onCommit}
-                onChange={(event) => setScaledSize('height', event.target.value)}
-              />
-            </label>
-          </div>
+          {isLineLike ? (
+            <div className="property-stack">
+              <label>
+                Length
+                <input
+                  min="1"
+                  type="number"
+                  value={scaledWidth}
+                  onBlur={onCommit}
+                  onChange={(event) => setScaledSize('width', event.target.value)}
+                />
+              </label>
+
+              {supportsLinePointEditing && (
+                <label className="switch-row">
+                  <span>Point editing</span>
+                  <input
+                    checked={Boolean(activeObject.linePointEditing)}
+                    type="checkbox"
+                    onBlur={onCommit}
+                    onChange={(event) =>
+                      onUpdate({ linePointEditing: event.target.checked })
+                    }
+                  />
+                  <span className="switch-control" />
+                </label>
+              )}
+            </div>
+          ) : (
+            <div className="two-column">
+              <label>
+                Width
+                <input
+                  min="1"
+                  type="number"
+                  value={scaledWidth}
+                  onBlur={onCommit}
+                  onChange={(event) =>
+                    setScaledSize('width', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Height
+                <input
+                  min="1"
+                  type="number"
+                  value={scaledHeight}
+                  onBlur={onCommit}
+                  onChange={(event) =>
+                    setScaledSize('height', event.target.value)
+                  }
+                />
+              </label>
+            </div>
+          )}
 
           <button className="danger-button" type="button" onClick={onDelete}>
             <Trash2 size={18} />

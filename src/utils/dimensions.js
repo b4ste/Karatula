@@ -20,14 +20,14 @@ export const SIGN_PRESETS = {
 }
 
 export function getCanvasPixels(signSize) {
-  const widthPx = Math.max(Number(signSize.widthPx) || 120, 20)
-  const heightPx = Math.max(Number(signSize.heightPx) || 30, 10)
+  const widthPx = Math.max(Number(signSize.widthPx) || 1920, 20)
+  const heightPx = Math.max(Number(signSize.heightPx) || 720, 10)
   const aspectRatio = widthPx / heightPx
-  const width = aspectRatio >= 4.5 ? 940 : 860
+  const width = Math.max(1, Math.min(aspectRatio >= 4.5 ? 940 : 860, 600 * aspectRatio))
 
   return {
     width,
-    height: Math.round(width / aspectRatio),
+    height: Math.max(1, Math.min(600, Math.round(width / aspectRatio))),
   }
 }
 

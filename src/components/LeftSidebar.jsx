@@ -15,7 +15,7 @@ const defaultRouteText = 'Text'
 const shapeSections = [
   {
     title: 'Recently used',
-    shapes: ['square', 'rounded-rectangle', 'heart', 'line', 'gradient-block'],
+    shapes: ['square', 'rectangle', 'heart', 'line'],
   },
   {
     title: 'Lines',
@@ -25,9 +25,7 @@ const shapeSections = [
     title: 'Basic shapes',
     shapes: [
       'square',
-      'rectangle',
       'half-rectangle',
-      'rounded-rectangle',
       'circle',
       'half-circle',
       'triangle',
@@ -48,7 +46,7 @@ const shapeSections = [
   },
   {
     title: 'Flowchart shapes',
-    shapes: ['process', 'terminator', 'decision', 'document'],
+    shapes: ['decision', 'document'],
   },
 ]
 
@@ -66,7 +64,6 @@ const shapeLabels = {
   diamond: 'Diamond',
   document: 'Document',
   'dotted-line': 'Dotted line',
-  'gradient-block': 'Gradient block',
   heart: 'Heart',
   'half-circle': 'Half circle',
   'half-rectangle': 'Half rectangle',
@@ -74,9 +71,7 @@ const shapeLabels = {
   line: 'Line',
   octagon: 'Octagon',
   pentagon: 'Pentagon',
-  process: 'Process',
   rectangle: 'Rectangle',
-  'rounded-rectangle': 'Rounded rectangle',
   sparkle: 'Sparkle',
   square: 'Square',
   star: 'Star',
@@ -109,8 +104,8 @@ function LeftSidebar({
   const updateCustomSize = (key, value) => {
     onSizeChange({
       type: 'custom',
-      widthPx: key === 'widthPx' ? Number(value) : customSize.widthPx,
-      heightPx: key === 'heightPx' ? Number(value) : customSize.heightPx,
+      widthPx: key === 'widthPx' ? Math.min(16000, Math.max(20, Math.round(Number(value) || 20))) : customSize.widthPx,
+      heightPx: key === 'heightPx' ? Math.min(16000, Math.max(10, Math.round(Number(value) || 10))) : customSize.heightPx,
     })
   }
 

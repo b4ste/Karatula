@@ -1,4 +1,3 @@
-import { jsPDF } from 'jspdf'
 import { canvasToPrintDataUrl, downloadDataUrl } from './canvasUtils'
 import { getSignLabel } from './dimensions'
 
@@ -7,14 +6,20 @@ function filenameFor(signSize, extension) {
 }
 
 export function downloadPng(canvas, signSize) {
-  downloadDataUrl(canvasToPrintDataUrl(canvas), filenameFor(signSize, 'png'))
+  downloadDataUrl(canvasToPrintDataUrl(canvas, signSize), filenameFor(signSize, 'png'))
 }
 
-export function exportPdf(canvas, signSize) {
-  const image = canvasToPrintDataUrl(canvas)
+export function downloadJpeg(canvas, signSize) {
+  downloadDataUrl(canvasToPrintDataUrl(canvas, signSize, 'image/jpeg', 0.92), filenameFor(signSize, 'jpg'))
+}
+
+export async function exportPdf(canvas, signSize) {
+  const { jsPDF } = await import('jspdf')
+  const image = canvasToPrintDataUrl(canvas, signSize)
   const pdf = new jsPDF({
     orientation: signSize.widthPx >= signSize.heightPx ? 'landscape' : 'portrait',
     unit: 'px',
+    hotfixes: ['px_scaling'],
     format: [signSize.widthPx, signSize.heightPx],
   })
 
@@ -23,11 +28,12 @@ export function exportPdf(canvas, signSize) {
 }
 
 export function printCanvas(canvas, signSize) {
-  const image = canvasToPrintDataUrl(canvas)
+  const image = canvasToPrintDataUrl(canvas, signSize)
   const printWindow = window.open('', '_blank', 'width=1100,height=700')
 
-  if (!printWindow) return
+  if (!printWindow) throw new Error('Allow popups to print your sign.')
 
+  printWindow.onload = () => { printWindow.focus(); printWindow.print() }
   printWindow.document.write(`
     <!doctype html>
     <html>
@@ -66,7 +72,5 @@ export function printCanvas(canvas, signSize) {
   `)
   printWindow.document.close()
   printWindow.focus()
-  printWindow.onload = () => {
-    printWindow.print()
-  }
+
 }

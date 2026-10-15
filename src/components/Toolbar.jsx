@@ -25,7 +25,7 @@ function Toolbar({
       <div className="brand">
         <div>
           <strong>KARATULA</strong>
-          <small>{message}</small>
+          <small role="status">{message}</small>
         </div>
       </div>
 
