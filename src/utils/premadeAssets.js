@@ -1,11 +1,13 @@
 import { cache, util } from 'fabric'
 import divisoriaProject from '../assets/premade/divisoria-city-hall.json' with { type: 'json' }
 import bicutanProject from '../assets/premade/sm-bicutan-dost.json' with { type: 'json' }
+import pasayProject from '../assets/premade/pasay-rotonda.json' with { type: 'json' }
 import { getCanvasPixels } from './dimensions.js'
 
 export const PREMADE_ASSETS = [
   { id: 'divisoria', name: 'Divisoria City Hall', project: divisoriaProject },
   { id: 'sm-bicutan-dost', name: 'SM Bicutan', project: bicutanProject },
+  { id: 'pasay-rotonda', name: 'Pasay Rotonda', project: pasayProject },
 ]
 
 const sourceSize = getCanvasPixels(divisoriaProject.signSize)

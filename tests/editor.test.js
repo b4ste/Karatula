@@ -58,6 +58,16 @@ test('SM Bicutan project is available as an editable premade design', () => {
   assert.deepEqual(getPremadeLayout(asset, 430, 300), { scale: 0.5, offsetX: 0, offsetY: 69.25 })
 })
 
+test('Pasay Rotonda project is available as an editable premade design', () => {
+  const asset = PREMADE_ASSETS.find(({ id }) => id === 'pasay-rotonda')
+  assert.ok(asset)
+  assert.equal(asset.name, 'Pasay Rotonda')
+  assert.equal(validateProject(asset.project), asset.project)
+  assert.equal(asset.project.canvas.background, '#111111')
+  assert.deepEqual(asset.project.canvas.objects.map(({ type }) => type), ['IText', 'IText', 'Path', 'Path'])
+  assert.deepEqual(asset.project.canvas.objects.map(({ text }) => text).filter(Boolean), ['PASAY', 'ROTONDA'])
+})
+
 test('reloaded premade text keeps its saved visual size after font metrics change', () => {
   const saved = divisoriaProject.canvas.objects.slice(-2)
   const restored = saved.map((source) => ({

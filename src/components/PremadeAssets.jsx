@@ -1,10 +1,12 @@
 ﻿import { PREMADE_ASSETS } from '../utils/premadeAssets'
 import divisoriaPicture from '../assets/premadepic/divisoria.png'
 import bicutanPicture from '../assets/premadepic/bicutan.png'
+import pasayPicture from '../assets/premadepic/pasayrotonda.png'
 
 const previewPictures = {
   divisoria: divisoriaPicture,
   'sm-bicutan-dost': bicutanPicture,
+  'pasay-rotonda': pasayPicture,
 }
 
 export default function PremadeAssets({ onClose, onUseAsset }) {
