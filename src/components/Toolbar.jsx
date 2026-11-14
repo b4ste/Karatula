@@ -27,9 +27,13 @@ function Toolbar({
       <div className="brand">
         <div>
           <strong>KARATULA</strong>
-          <small role="status">{message}</small>
+          <small>By Baste</small>
         </div>
       </div>
+
+      {message !== 'By Baste' && (
+        <div className="topbar-notice" role="status">{message}</div>
+      )}
 
       <div className="topbar-actions">
         <button

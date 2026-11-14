@@ -7,7 +7,9 @@ import { canvasToPrintDataUrl } from '../src/utils/canvasUtils.js'
 import { getLayerDropIndex } from '../src/utils/layerOrder.js'
 import { getRulerScale } from '../src/utils/ruler.js'
 import { fitRectangleToBoard } from '../src/utils/fitToBoard.js'
-import { DIVISORIA_PREVIEW_SIZE, getDivisoriaLayout } from '../src/utils/premadeAssets.js'
+import { restoreSavedTextSize } from '../src/utils/textLayout.js'
+import { measureTextInkBounds } from '../src/utils/textSelection.js'
+import { DIVISORIA_PREVIEW_SIZE, getDivisoriaLayout, getPremadeLayout, PREMADE_ASSETS } from '../src/utils/premadeAssets.js'
 import divisoriaProject from '../src/assets/premade/divisoria-city-hall.json' with { type: 'json' }
 
 const project = { formatVersion: 1, signSize: { widthPx: 1920, heightPx: 720 }, canvas: { objects: [] } }
@@ -44,6 +46,59 @@ test('premade design uses the saved layers and scales uniformly without changing
     divisoriaProject.canvas.objects.map(({ layerName }) => layerName),
     ['Border', 'Light sign panel', 'Yellow accent', 'DIVISORIA', 'CITY HALL'],
   )
+})
+
+test('SM Bicutan project is available as an editable premade design', () => {
+  const asset = PREMADE_ASSETS.find(({ id }) => id === 'sm-bicutan-dost')
+  assert.ok(asset)
+  assert.equal(asset.name, 'SM Bicutan')
+  assert.equal(validateProject(asset.project), asset.project)
+  assert.equal(asset.project.canvas.background, '#ffffff')
+  assert.deepEqual(asset.project.canvas.objects.map(({ text }) => text).filter(Boolean), ['SM', 'BICUTAN', 'dost'])
+  assert.deepEqual(getPremadeLayout(asset, 430, 300), { scale: 0.5, offsetX: 0, offsetY: 69.25 })
+})
+
+test('reloaded premade text keeps its saved visual size after font metrics change', () => {
+  const saved = divisoriaProject.canvas.objects.slice(-2)
+  const restored = saved.map((source) => ({
+    text: source.text,
+    width: source.width * 1.5,
+    height: source.height * 1.2,
+    scaleX: source.scaleX,
+    scaleY: source.scaleY,
+    set(key, value) { this[key] = value },
+    setCoords() { this.coordsUpdated = true },
+  }))
+
+  restoreSavedTextSize(restored, saved)
+
+  restored.forEach((object, index) => {
+    assert.ok(Math.abs(object.width * object.scaleX - saved[index].width * saved[index].scaleX) < 0.0001)
+    assert.ok(Math.abs(object.height * object.scaleY - saved[index].height * saved[index].scaleY) < 0.0001)
+    assert.equal(object.coordsUpdated, true)
+  })
+})
+
+test('text selection bounds follow visible glyph height instead of the font line box', () => {
+  const object = {
+    text: 'SM',
+    fontFamily: 'Test',
+    fontSize: 100,
+    fontWeight: '700',
+    fontStyle: 'normal',
+    height: 113,
+    strokeWidth: 0,
+    _fontSizeFraction: 0.222,
+    getHeightOfLineImpl: () => 113,
+    getHeightOfLine: () => 113,
+  }
+  const context = { measureText: () => ({ actualBoundingBoxAscent: 75, actualBoundingBoxDescent: 5 }) }
+
+  const bounds = measureTextInkBounds(object, context)
+
+  assert.ok(bounds.top > -object.height / 2)
+  assert.ok(bounds.bottom < object.height / 2)
+  assert.ok(bounds.bottom - bounds.top < object.height)
 })
 
 test('fit to board aligns a rotated rectangle outline with every board edge', () => {

@@ -37,11 +37,13 @@ import brickTexture from './assets/textures/brick1.jpg'
 import { getCanvasPixels, getSignLabel } from './utils/dimensions'
 import { downloadJpeg, downloadPng, exportPdf, printCanvas } from './utils/exportUtils'
 import { setImageMarqueeMask } from './utils/imageEditing'
-import { createDivisoriaDesign, DIVISORIA_BACKGROUND, loadDivisoriaFonts } from './utils/premadeAssets'
+import { createPremadeDesign, loadPremadeFonts } from './utils/premadeAssets'
 import { getRulerScale } from './utils/ruler'
 import { fitRectangleToBoard } from './utils/fitToBoard'
 import { applyRotateCursor } from './utils/rotateCursor'
 import { CUSTOM_FONTS, DEFAULT_FONT } from './utils/fonts'
+import { restoreSavedTextSize } from './utils/textLayout'
+import { tightenTextSelection } from './utils/textSelection'
 import './index.css'
 
 const FABRIC_CUSTOM_PROPS = [
@@ -72,6 +74,7 @@ const FABRIC_CUSTOM_PROPS = [
   'lockScalingX',
   'lockScalingY',
   'padding',
+  'shadowStyle',
   'strokeUniform',
   'textureName',
   'warpType',
@@ -511,8 +514,6 @@ function stretchLineLive(object, event) {
 }
 
 function fitTextObjectToContent(object) {
-  if (object.autoFitText === false) return
-
   if (object.fontFamily) {
     cache.clearFontCache(object.fontFamily)
   } else {
@@ -521,6 +522,11 @@ function fitTextObjectToContent(object) {
 
   object.dirty = true
   object.initDimensions?.()
+  if (object.autoFitText === false) {
+    tightenTextSelection(object, document.createElement('canvas').getContext('2d'))
+    object.setCoords()
+    return
+  }
 
   const measureCanvas = document.createElement('canvas')
   const context = measureCanvas.getContext('2d')
@@ -558,10 +564,15 @@ function fitTextObjectToContent(object) {
     object.initDimensions?.()
   }
 
+  tightenTextSelection(object, document.createElement('canvas').getContext('2d'))
   object.setCoords()
 }
 
-async function refreshCanvasTextFonts(canvas) {
+function textFontDescriptor(object) {
+  return `${object.fontStyle || 'normal'} ${object.fontWeight || '400'} ${object.fontSize || 54}px "${object.fontFamily}"`
+}
+
+async function refreshCanvasTextFonts(canvas, savedCanvas) {
   const textObjects = allCanvasObjects(canvas).filter((object) => typeof object.text === 'string')
 
   if ('fonts' in document) {
@@ -571,14 +582,16 @@ async function refreshCanvasTextFonts(canvas) {
           object.set({ fontFamily: DEFAULT_FONT })
         }
 
-        const fontSize = object.fontSize || 54
-        return document.fonts.load(`${fontSize}px "${object.fontFamily}"`)
+        return document.fonts.load(textFontDescriptor(object))
       }),
     )
     await document.fonts.ready
   }
 
   textObjects.forEach(fitTextObjectToContent)
+  if (savedCanvas?.objects) {
+    restoreSavedTextSize(canvas.getObjects(), savedCanvas.objects)
+  }
 }
 
 function polygonPoints(sides, radius) {
@@ -653,6 +666,12 @@ function App() {
   const historyRef = useRef({ history: [], index: -1, isRestoring: false })
 
   useEffect(() => {
+    if (message === 'By Baste') return undefined
+    const timeout = window.setTimeout(() => setMessage('By Baste'), 4000)
+    return () => window.clearTimeout(timeout)
+  }, [message])
+
+  useEffect(() => {
     viewZoomRef.current = viewZoom
   }, [viewZoom])
 
@@ -718,7 +737,7 @@ function App() {
       const snapshot = JSON.parse(history[index])
       await canvas.loadFromJSON(snapshot.canvas)
       setSignSize(snapshot.signSize)
-      await refreshCanvasTextFonts(canvas)
+      await refreshCanvasTextFonts(canvas, snapshot.canvas)
       refreshLinePointControls(canvas)
       canvas.renderAll()
       setActiveObject(null)
@@ -795,7 +814,7 @@ function App() {
 
       try {
         await canvas.loadFromJSON(savedCanvas)
-        await refreshCanvasTextFonts(canvas)
+        await refreshCanvasTextFonts(canvas, savedCanvas)
         refreshLinePointControls(canvas)
         canvas.renderAll()
 
@@ -938,7 +957,13 @@ function App() {
   useEffect(() => {
     if (!canvas) return
 
-    const syncSelection = () => setActiveObject(canvas.getActiveObject() || null)
+    const syncSelection = () => {
+      const selected = canvas.getActiveObject()
+      if (typeof selected?.text === 'string') {
+        tightenTextSelection(selected, document.createElement('canvas').getContext('2d'))
+      }
+      setActiveObject(selected || null)
+    }
     const removeEmptyText = (object) => {
       if (typeof object?.text !== 'string') return false
       if (object.text.trim().length > 0) return false
@@ -1217,6 +1242,7 @@ function App() {
       opacity: 1,
     })
     textObject.initDimensions?.()
+    tightenTextSelection(textObject, document.createElement('canvas').getContext('2d'))
     centerObject(textObject)
   }
 
@@ -1239,8 +1265,6 @@ function App() {
         width: 190,
         height: 90,
         ...common,
-        fill: 'transparent',
-        strokeWidth: 8,
       }))
     }
 
@@ -1518,8 +1542,7 @@ function App() {
     if (typeof object.text !== 'string') return
 
     if ('fonts' in document && object.fontFamily) {
-      const fontSize = object.fontSize || 54
-      await document.fonts.load(`${fontSize}px "${object.fontFamily}"`)
+      await document.fonts.load(textFontDescriptor(object))
     }
 
     fitTextObjectToContent(object)
@@ -1577,6 +1600,8 @@ function App() {
       paintFirst: object.paintFirst,
       scaleX: 1,
       scaleY: object.scaleY,
+      shadow: object.shadow,
+      shadowStyle: object.shadowStyle,
       skewX: object.skewX,
       skewY: object.skewY,
       stroke: object.stroke,
@@ -1996,17 +2021,22 @@ function App() {
     pushHistory(canvas)
   }
 
-  const useDivisoriaDesign = async () => {
+  const usePremadeDesign = async (asset) => {
     if (!canvas || historyRef.current.isRestoring) return
     try {
-      await loadDivisoriaFonts()
-      const objects = await createDivisoriaDesign(canvas.getWidth(), canvas.getHeight())
+      await loadPremadeFonts(asset)
+      const objects = await createPremadeDesign(asset, canvas.getWidth(), canvas.getHeight())
       transactionRef.current = true
       try {
         canvas.discardActiveObject()
         canvas.remove(...canvas.getObjects())
-        canvas.set('backgroundColor', DIVISORIA_BACKGROUND)
+        canvas.set('backgroundColor', asset.project.canvas.background)
         canvas.add(...objects)
+        objects.forEach((object) => {
+          if (typeof object.text === 'string') {
+            tightenTextSelection(object, document.createElement('canvas').getContext('2d'))
+          }
+        })
       } finally {
         transactionRef.current = false
       }
@@ -2015,7 +2045,7 @@ function App() {
       setActiveObjectVersion((version) => version + 1)
       pushHistory(canvas)
       setShowPremadeAssets(false)
-      setMessage('Divisoria City Hall design added')
+      setMessage(`${asset.name} design added`)
     } catch {
       setMessage('Could not load the premade design.')
     }
@@ -2063,7 +2093,7 @@ function App() {
       historyRef.current.isRestoring = true
       setIsRestoring(true)
       await canvas.loadFromJSON(project.canvas)
-      await refreshCanvasTextFonts(canvas)
+      await refreshCanvasTextFonts(canvas, project.canvas)
       refreshLinePointControls(canvas)
       setSignSize(project.signSize)
       canvas.discardActiveObject()
@@ -2359,24 +2389,23 @@ function App() {
           }} />
           <div className="inspector-details">
             {activeObject?.type === 'image' && <ImageTools image={activeObject} onEdit={editLayers} onError={setMessage} />}
-            {activeObject && <section className="selection-actions" aria-label="Arrange selection">
-            <h2>Arrange</h2>
-            {activeObject.type !== 'activeselection' && <label>Layer name
-              <input aria-label="Layer name" maxLength={80} value={activeObject.layerName || ''} placeholder="Name this layer"
-                onChange={(event) => editLayers(() => activeObject.set('layerName', event.target.value))} />
-            </label>}
-            <div className="arrange-grid">
-              {['left', 'center', 'right', 'top', 'middle', 'bottom'].map((action) => <button key={action} type="button" disabled={canvas.getActiveObjects().some((item) => item.isLocked)} onClick={() => transformSelection(action)}>{action}</button>)}
-              {activeObject.type?.toLowerCase() === 'rect' && <button className="fit-board-button" type="button" disabled={activeObject.isLocked} title="Align the rectangle border with all four board edges" onClick={fitSelectedRectangleToBoard}>Fit to board</button>}
-              <button type="button" onClick={() => transformSelection('flipX')}>Flip horizontal</button>
-              <button type="button" onClick={() => transformSelection('flipY')}>Flip vertical</button>
-              <button type="button" onClick={duplicateSelection}>Duplicate</button>
-              <button type="button" disabled={canvas.getActiveObjects().length < 2} onClick={groupSelection}>Group</button>
-              <button type="button" disabled={activeObject.type !== 'group'} onClick={ungroupSelection}>Ungroup</button>
-            </div>
-            </section>}
             <PropertiesPanel
               activeObject={activeObject}
+              arrangeControls={activeObject && <div className="arrange-page-controls" aria-label="Arrange selection">
+                {activeObject.type !== 'activeselection' && <label>Layer name
+                  <input aria-label="Layer name" maxLength={80} value={activeObject.layerName || ''} placeholder="Name this layer"
+                    onChange={(event) => editLayers(() => activeObject.set('layerName', event.target.value))} />
+                </label>}
+                <div className="arrange-grid">
+                  {['left', 'center', 'right', 'top', 'middle', 'bottom'].map((action) => <button key={action} type="button" disabled={canvas.getActiveObjects().some((item) => item.isLocked)} onClick={() => transformSelection(action)}>{action}</button>)}
+                  {activeObject.type?.toLowerCase() === 'rect' && <button className="fit-board-button" type="button" disabled={activeObject.isLocked} title="Align the rectangle border with all four board edges" onClick={fitSelectedRectangleToBoard}>Fit to board</button>}
+                  <button type="button" onClick={() => transformSelection('flipX')}>Flip horizontal</button>
+                  <button type="button" onClick={() => transformSelection('flipY')}>Flip vertical</button>
+                  <button type="button" onClick={duplicateSelection}>Duplicate</button>
+                  <button type="button" disabled={canvas.getActiveObjects().length < 2} onClick={groupSelection}>Group</button>
+                  <button type="button" disabled={activeObject.type !== 'group'} onClick={ungroupSelection}>Ungroup</button>
+                </div>
+              </div>}
               onCommit={commitActiveObject}
               onDelete={deleteActiveObject}
               onLayerChange={changeLayer}
@@ -2438,7 +2467,7 @@ function App() {
 
       {showPremadeAssets && <PremadeAssets
         onClose={() => setShowPremadeAssets(false)}
-        onUseDivisoria={useDivisoriaDesign}
+        onUseAsset={usePremadeDesign}
       />}
 
       {showResetModal && (

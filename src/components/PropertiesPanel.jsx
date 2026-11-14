@@ -8,6 +8,8 @@ import {
   ArrowUp,
   ArrowUpToLine,
   Bold,
+  ChevronLeft,
+  ChevronRight,
   Eraser,
   Italic,
   RotateCcw,
@@ -15,6 +17,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { CUSTOM_FONTS, DEFAULT_FONT } from '../utils/fonts'
+import ColorPicker from './ColorPicker'
 
 function numberValue(value, fallback = 0) {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)) : fallback
@@ -59,6 +62,31 @@ const TEXTURE_OPTIONS = [
   ['blue-metal', 'Blue metal'],
   ['brick', 'Brick'],
 ]
+
+const SHADOW_STYLES = {
+  drop: { blur: 4, offsetX: 6, offsetY: 6, opacity: 70 },
+  soft: { blur: 16, offsetX: 8, offsetY: 8, opacity: 45 },
+  hard: { blur: 0, offsetX: 8, offsetY: 8, opacity: 90 },
+  glow: { blur: 18, offsetX: 0, offsetY: 0, opacity: 80 },
+}
+
+function shadowColorParts(color = '#000000') {
+  const hex = /^#([\da-f]{6})$/i.exec(color)
+  if (hex) return { hex: `#${hex[1]}`, opacity: 100 }
+
+  const rgba = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(color)
+  if (!rgba) return { hex: '#000000', opacity: 100 }
+
+  return {
+    hex: `#${rgba.slice(1, 4).map((part) => Number(part).toString(16).padStart(2, '0')).join('')}`,
+    opacity: Math.round(Number(rgba[4] ?? 1) * 100),
+  }
+}
+
+function shadowColor(hex, opacity) {
+  const rgb = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16))
+  return `rgba(${rgb.join(', ')}, ${Math.max(0, Math.min(100, opacity)) / 100})`
+}
 
 function getWarpPreviewPath(type) {
   const paths = {
@@ -105,6 +133,7 @@ function WarpPreview({ label, type }) {
 
 function PropertiesPanel({
   activeObject,
+  arrangeControls,
   onCommit,
   onDelete,
   onLayerChange,
@@ -113,6 +142,7 @@ function PropertiesPanel({
   const [showCurveResetModal, setShowCurveResetModal] = useState(false)
   const [showWarpResetModal, setShowWarpResetModal] = useState(false)
   const [showWarpPicker, setShowWarpPicker] = useState(false)
+  const [view, setView] = useState({ object: null, page: 'main' })
   const isText = typeof activeObject?.text === 'string'
   const isImage = activeObject?.type === 'image'
   const isLine = activeObject?.type?.toLowerCase() === 'line'
@@ -121,6 +151,19 @@ function PropertiesPanel({
     activeObject?.arrowLine || activeObject?.curvedLine,
   )
   const isRectangle = activeObject?.type?.toLowerCase() === 'rect'
+  const page = view.object === activeObject ? view.page : 'main'
+  const slideDirection = view.object === activeObject ? view.direction : null
+
+  const navigate = (nextPage, event) => {
+    setView({
+      direction: nextPage === 'main' ? 'back' : 'forward',
+      object: activeObject,
+      page: nextPage,
+    })
+    const scroller = event.currentTarget.closest('.inspector-details')
+      || event.currentTarget.closest('.properties-panel')
+    if (scroller) scroller.scrollTop = 0
+  }
 
   if (!activeObject) {
     return (
@@ -149,6 +192,12 @@ function PropertiesPanel({
   const selectedWarp =
     WARP_OPTIONS.find(([value]) => value === (activeObject.warpType || 'none')) ||
     WARP_OPTIONS[0]
+  const shadow = activeObject.shadow
+  const shadowAppearance = shadowColorParts(shadow?.color)
+  const shadowDistance = Math.round(Math.hypot(shadow?.offsetX || 0, shadow?.offsetY || 0))
+  const shadowDirection = Math.round(
+    (Math.atan2(shadow?.offsetY || 0, shadow?.offsetX || 0) * 180 / Math.PI + 360) % 360,
+  )
 
   const setScaledSize = (key, value) => {
     const next = Math.max(Number(value), 1)
@@ -175,15 +224,40 @@ function PropertiesPanel({
     }
   }
 
+  const updateShadow = (changes) => {
+    onUpdate({
+      shadow: {
+        color: activeObject.shadow?.color || '#000000',
+        blur: activeObject.shadow?.blur ?? 4,
+        offsetX: activeObject.shadow?.offsetX ?? 4,
+        offsetY: activeObject.shadow?.offsetY ?? 4,
+        ...changes,
+      },
+    })
+  }
+
   return (
     <aside className="sidebar properties-panel">
-      <section>
-        <h2>Object properties</h2>
+      <section
+        className={slideDirection ? `properties-page slide-${slideDirection}` : 'properties-page'}
+        key={page}
+      >
+        {page === 'main' ? (
+          <h2>Object properties</h2>
+        ) : (
+          <div className="properties-page-heading">
+            <button type="button" onClick={(event) => navigate('main', event)}>
+              <ChevronLeft size={17} /> Back
+            </button>
+            <h2>{page === 'layout' && isText ? 'Position' : ({ text: 'Text', shadow: 'Shadow', warp: 'Warp', appearance: 'Fill & outline', layout: 'Size & position', arrange: 'Arrange', background: 'Background remover' })[page]}</h2>
+          </div>
+        )}
         {activeObject.isLocked && (
           <p className="locked-note">Locked. Right-click the object to unlock it.</p>
         )}
-        <fieldset className="property-stack" disabled={activeObject.isLocked}>
-          {isText && (
+        {page === 'arrange' && arrangeControls}
+        <fieldset className="property-stack" disabled={activeObject.isLocked && page !== 'main'}>
+          {page === 'text' && isText && (
             <>
               <label>
                 Text
@@ -334,6 +408,121 @@ function PropertiesPanel({
                 </select>
               </label>
 
+            </>
+          )}
+
+          {page === 'shadow' && isText && (
+            <>
+              <div className="property-group">
+                <label className="checkbox-row">
+                  <input
+                    checked={Boolean(activeObject.shadow)}
+                    type="checkbox"
+                    onChange={(event) => {
+                      onUpdate({
+                        shadow: event.target.checked
+                          ? { blur: 4, offsetX: 6, offsetY: 6, color: shadowColor('#000000', 70) }
+                          : null,
+                        shadowStyle: event.target.checked ? 'drop' : activeObject.shadowStyle,
+                      })
+                      onCommit()
+                    }}
+                  />
+                  Shadow
+                </label>
+                {activeObject.shadow && (
+                  <>
+                    <label>
+                      Shadow style
+                      <select
+                        value={activeObject.shadowStyle || 'drop'}
+                        onChange={(event) => {
+                          const style = event.target.value
+                          const { opacity, ...settings } = SHADOW_STYLES[style]
+                          onUpdate({
+                            shadow: {
+                              ...settings,
+                              color: shadowColor(shadowAppearance.hex, opacity),
+                            },
+                            shadowStyle: style,
+                          })
+                          onCommit()
+                        }}
+                      >
+                        <option value="drop">Drop</option>
+                        <option value="soft">Soft</option>
+                        <option value="hard">Hard</option>
+                        <option value="glow">Glow</option>
+                      </select>
+                    </label>
+                    <ColorPicker label="Shadow color" value={shadowAppearance.hex}
+                      onChange={(color) => updateShadow({ color: shadowColor(color, shadowAppearance.opacity) })} />
+                    <label>
+                      Opacity: {shadowAppearance.opacity}%
+                      <input
+                        max="100"
+                        min="0"
+                        type="range"
+                        value={shadowAppearance.opacity}
+                        onBlur={onCommit}
+                        onChange={(event) => updateShadow({ color: shadowColor(shadowAppearance.hex, Number(event.target.value)) })}
+                      />
+                    </label>
+                    <label>
+                      Blur: {numberValue(shadow.blur)}
+                      <input
+                        max="100"
+                        min="0"
+                        type="range"
+                        value={numberValue(shadow.blur)}
+                        onBlur={onCommit}
+                        onChange={(event) => updateShadow({ blur: Number(event.target.value) })}
+                      />
+                    </label>
+                    <label>
+                      Direction: {shadowDirection}°
+                      <input
+                        max="360"
+                        min="0"
+                        type="range"
+                        value={shadowDirection}
+                        onBlur={onCommit}
+                        onChange={(event) => {
+                          const radians = Number(event.target.value) * Math.PI / 180
+                          const distance = shadowDistance || 8
+                          updateShadow({
+                            offsetX: Math.round(Math.cos(radians) * distance * 100) / 100,
+                            offsetY: Math.round(Math.sin(radians) * distance * 100) / 100,
+                          })
+                        }}
+                      />
+                    </label>
+                    <label>
+                      Distance: {shadowDistance}
+                      <input
+                        max="100"
+                        min="0"
+                        type="range"
+                        value={shadowDistance}
+                        onBlur={onCommit}
+                        onChange={(event) => {
+                          const radians = shadowDirection * Math.PI / 180
+                          const distance = Number(event.target.value)
+                          updateShadow({
+                            offsetX: Math.round(Math.cos(radians) * distance * 100) / 100,
+                            offsetY: Math.round(Math.sin(radians) * distance * 100) / 100,
+                          })
+                        }}
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {page === 'warp' && isText && (
+            <>
               <div className="property-group">
                 <div className="warp-style-picker">
                   <span className="property-label">Warp style</span>
@@ -460,7 +649,7 @@ function PropertiesPanel({
             </>
           )}
 
-          {isImage && (
+          {page === 'background' && isImage && (
             <div className="property-group">
               <span className="property-label">Background remover</span>
               <label>
@@ -511,8 +700,9 @@ function PropertiesPanel({
             </div>
           )}
 
-          {!isImage && (
+          {((page === 'text' && isText) || (page === 'appearance' && !isText && !isImage)) && (
             <>
+              {isText && <h3 className="properties-section-title">Fill & outline</h3>}
               {isRectangle && (
                 <label className="checkbox-row">
                   <input
@@ -525,7 +715,6 @@ function PropertiesPanel({
                           stroke: activeObject.strokeWidth && activeObject.stroke
                             ? activeObject.stroke
                             : colorValue(activeObject.fill),
-                          strokeWidth: activeObject.strokeWidth || 8,
                         })
                       } else {
                         onUpdate({ fill: '#ffffff' })
@@ -536,15 +725,9 @@ function PropertiesPanel({
                   Transparent inside
                 </label>
               )}
-              <label>
-                {isRectangle ? 'Fill color' : 'Text / fill color'}
-                <input
-                  type="color"
-                  value={colorValue(activeObject.fill, '#ffffff')}
-                  onBlur={onCommit}
-                  onChange={(event) => onUpdate({ fill: event.target.value })}
-                />
-              </label>
+              <ColorPicker label={isRectangle ? 'Fill color' : 'Text / fill color'}
+                value={colorValue(activeObject.fill, '#ffffff')}
+                onChange={(color) => onUpdate({ fill: color })} />
 
               <label className="checkbox-row">
                 <input
@@ -574,48 +757,22 @@ function PropertiesPanel({
                 <div className="property-group">
                   <span className="property-label">Fill gradient</span>
                   <div className="gradient-pickers">
-                    <label>
-                      From
-                      <input
-                        type="color"
-                        value={gradientColor(activeObject.fill, 0, '#ffffff')}
-                        onBlur={onCommit}
-                        onChange={(event) =>
-                          onUpdate({
-                            gradientFill: {
-                              angle: gradientAngle(activeObject),
-                              end: gradientColor(
-                                activeObject.fill,
-                                1,
-                                '#facc15',
-                              ),
-                              start: event.target.value,
-                            },
-                          })
-                        }
-                      />
-                    </label>
-                    <label>
-                      To
-                      <input
-                        type="color"
-                        value={gradientColor(activeObject.fill, 1, '#facc15')}
-                        onBlur={onCommit}
-                        onChange={(event) =>
-                          onUpdate({
-                            gradientFill: {
-                              angle: gradientAngle(activeObject),
-                              end: event.target.value,
-                              start: gradientColor(
-                                activeObject.fill,
-                                0,
-                                '#ffffff',
-                              ),
-                            },
-                          })
-                        }
-                      />
-                    </label>
+                    <ColorPicker label="From" value={gradientColor(activeObject.fill, 0, '#ffffff')}
+                      onChange={(color) => onUpdate({
+                        gradientFill: {
+                          angle: gradientAngle(activeObject),
+                          end: gradientColor(activeObject.fill, 1, '#facc15'),
+                          start: color,
+                        },
+                      })} />
+                    <ColorPicker label="To" value={gradientColor(activeObject.fill, 1, '#facc15')}
+                      onChange={(color) => onUpdate({
+                        gradientFill: {
+                          angle: gradientAngle(activeObject),
+                          end: color,
+                          start: gradientColor(activeObject.fill, 0, '#ffffff'),
+                        },
+                      })} />
                   </div>
                   <label>
                     Angle
@@ -683,17 +840,8 @@ function PropertiesPanel({
               )}
 
               <div className="inline-property">
-                <label>
-                  Outline color
-                  <input
-                    type="color"
-                    value={activeObject.stroke || '#111111'}
-                    onBlur={onCommit}
-                    onChange={(event) =>
-                      onUpdate({ stroke: event.target.value })
-                    }
-                  />
-                </label>
+                <ColorPicker label="Outline color" value={colorValue(activeObject.stroke, '#111111')}
+                  onChange={(color) => onUpdate({ stroke: color })} />
                 <button
                   aria-label="Sync outline color with fill color"
                   className="icon-button"
@@ -715,7 +863,7 @@ function PropertiesPanel({
             </>
           )}
 
-          <div className="property-group">
+          {page === 'arrange' && <div className="property-group">
             <h3>Layer</h3>
             <div className="layer-controls">
               <button
@@ -751,8 +899,9 @@ function PropertiesPanel({
                 <ArrowUpToLine size={16} />
               </button>
             </div>
-          </div>
+          </div>}
 
+          {page === 'layout' && <>
           <label>
             Opacity
             <input
@@ -827,7 +976,7 @@ function PropertiesPanel({
                 </label>
               )}
             </div>
-          ) : (
+          ) : !isText ? (
             <div className="two-column">
               <label>
                 Width
@@ -854,12 +1003,31 @@ function PropertiesPanel({
                 />
               </label>
             </div>
-          )}
+          ) : null}
 
           <button className="danger-button" type="button" onClick={onDelete}>
             <Trash2 size={18} />
             Delete object
           </button>
+          </>}
+
+          {page === 'main' && (
+            <nav aria-label="Property sections" className="properties-nav-list">
+              {[
+                ...(isText ? [['text', 'Text', 'Content, font, fill, outline']] : []),
+                ...(isText ? [['shadow', 'Shadow', activeObject.shadow ? ({ drop: 'Drop', soft: 'Soft', hard: 'Hard', glow: 'Glow' })[activeObject.shadowStyle] || 'On' : 'Off'], ['warp', 'Warp', selectedWarp[1]]] : []),
+                ...(!isText && !isImage ? [['appearance', 'Fill & outline', 'Colors, gradient, outline']] : []),
+                ...(isImage ? [['background', 'Background remover', 'Erase white background']] : []),
+                ['layout', isText ? 'Position' : 'Size & position', isText ? 'X, Y, rotation, opacity' : 'Dimensions, rotation, opacity'],
+                ['arrange', 'Arrange', 'Layer name, alignment, order'],
+              ].map(([target, title, description]) => (
+                <button className="properties-nav-button" key={target} type="button" onClick={(event) => navigate(target, event)}>
+                  <span><strong>{title}</strong><small>{description}</small></span>
+                  <ChevronRight size={18} />
+                </button>
+              ))}
+            </nav>
+          )}
         </fieldset>
       </section>
 

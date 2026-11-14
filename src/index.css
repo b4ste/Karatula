@@ -311,6 +311,21 @@ h2 {
   margin-top: 2px;
 }
 
+.topbar-notice {
+  background: #173252;
+  border: 1px solid #4f80b8;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  color: #f3f7ff;
+  font-size: 12px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 10px 14px;
+  position: fixed;
+  right: 16px;
+  top: 76px;
+  z-index: 20;
+}
+
 .topbar-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1026,6 +1041,100 @@ fieldset.property-stack:disabled {
   margin: 0;
 }
 
+.properties-page-heading {
+  display: grid;
+  gap: 10px;
+}
+
+.properties-section-title {
+  border-top: 1px solid #294262;
+  color: #f3f7ff;
+  font-size: 13px;
+  margin: 8px 0 0;
+  padding-top: 14px;
+}
+
+.properties-page.slide-forward {
+  animation: properties-slide-forward 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.properties-page.slide-back {
+  animation: properties-slide-back 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes properties-slide-forward {
+  from { opacity: 0.35; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes properties-slide-back {
+  from { opacity: 0.35; transform: translateX(-24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .properties-page.slide-forward,
+  .properties-page.slide-back {
+    animation: none;
+  }
+}
+
+.properties-page-heading button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: #bcd4f5;
+  display: inline-flex;
+  gap: 4px;
+  justify-self: start;
+  min-height: 28px;
+  padding: 0;
+}
+
+.properties-page-heading button:hover {
+  color: #ffffff;
+}
+
+.properties-nav-list {
+  display: grid;
+  gap: 8px;
+}
+
+.properties-nav-button {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  min-height: 58px;
+  padding: 9px 12px;
+  text-align: left;
+  width: 100%;
+}
+
+.properties-nav-button span {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.properties-nav-button strong {
+  color: #f3f7ff;
+  font-size: 13px;
+}
+
+.properties-nav-button small {
+  color: #9fb6d6;
+  font-size: 11px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrange-page-controls {
+  display: grid;
+  gap: 12px;
+}
+
 .warp-style-picker {
   display: grid;
   gap: 6px;
@@ -1290,12 +1399,79 @@ fieldset.property-stack:disabled {
 
 .gradient-pickers {
   display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.gradient-pickers input[type="color"] {
-  min-height: 34px;
+.property-color-picker {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.color-picker-row {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 36px minmax(0, 1fr) 58px;
+  min-width: 0;
+}
+
+.color-picker-row .color-picker-preview {
+  border: 2px solid #829bb9;
+  border-radius: 7px;
+  min-height: 36px;
+  padding: 0;
+}
+
+.color-picker-row .color-picker-hex {
+  font-size: 12px;
+  min-width: 0;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.color-picker-row .color-picker-toggle {
+  font-size: 11px;
+  min-height: 36px;
+  padding: 4px;
+}
+
+.color-picker-options {
+  background: #0c1d33;
+  border: 1px solid #294262;
+  border-radius: 8px;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.color-picker-swatches {
+  display: grid;
+  gap: 5px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.color-picker-swatches .color-picker-swatch {
+  aspect-ratio: 1;
+  border: 1px solid #829bb9;
+  border-radius: 5px;
+  min-height: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.color-picker-swatch[aria-pressed="true"] {
+  outline: 2px solid #facc15;
+  outline-offset: 2px;
+}
+
+.color-picker-custom {
+  font-size: 11px;
+}
+
+.color-picker-custom input[type="color"] {
+  cursor: pointer;
+  min-height: 36px;
 }
 
 .checkbox-row {
@@ -1384,7 +1560,7 @@ fieldset.property-stack:disabled {
 
 /* Document organization and arrangement */
 .inspector { background: #0b1b30; border-left: 1px solid #294262; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
-.inspector-details { flex: 1; min-height: 0; overflow-y: auto; }
+.inspector-details { flex: 1; min-height: 0; overflow-x: hidden; overflow-y: auto; }
 .inspector .properties-panel { overflow: visible; border: 0; }
 .selection-actions { padding: 16px; border-bottom: 1px solid #294262; }
 .layers-panel { background: #0b1b30; border-bottom: 1px solid #294262; color: #c8d7ee; flex: none; padding: 0; }
